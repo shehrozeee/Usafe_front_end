@@ -1,0 +1,18 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches: [feature/upl-checklists]
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Cloudflare Pages
+        run: |
+          source /home/ubuntu/.wrangler-env
+          export CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID
+          cd $GITHUB_WORKSPACE
+          npx wrangler pages deploy . --project-name usafe-mobile --branch main --commit-dirty=true
