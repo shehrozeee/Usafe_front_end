@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CheckList</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
-    <link rel="stylesheet" href="../../css/header.css" >
-    <link rel="stylesheet" href="../../css/form-wizard.css" >
+    <link rel="stylesheet" href="../../css/header.css">
+    <link rel="stylesheet" href="../../css/form-wizard.css">
+    <link rel="stylesheet" href="../../css/checklist-v2.css">
     <script src="https://kit.fontawesome.com/b576bd8d3c.js" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/jquery-3.7.0.min.js" integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g=" crossorigin="anonymous"></script>
     <script src="../../Templates/Header.js"></script>
@@ -14,28 +15,29 @@
     <script src="../../Global/URLS.js"></script>
     <script src="../../Helpers/HttpHandler.js"></script>
 
+    <!-- Response type templates and renderers -->
+    <script src="../../Templates/ResponseTemplates.js"></script>
+    <script src="../../Templates/HeaderFieldTemplates.js"></script>
+    <script src="../../Js/ResponseRenderers.js"></script>
+
     <script src="../../Templates/GenericCheckList.js"></script>
     <script src="../../Js/GenericQuestioneerProcessor.js"></script>
-  <script src="../../Js/Authentication/CheckUser.js"></script>
-  <script src="
-  https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.all.min.js
-  "></script>
-  <link href="
-  https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.min.css
-  " rel="stylesheet">
+    <script src="../../Js/Authentication/CheckUser.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.all.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.min.css" rel="stylesheet">
 </head>
 <body>
     <div id="header"></div>
     <div id="wizardContainer"></div>
     <div id="resultContainer" class="wizard-form"></div>
-    
+
     <script>
         $(document).ready(function(){
-            //get query string from url
             var url_string = window.location.href;
-            //get heading from query string
+            console.log('genericChecklist URL:', url_string);
             var url = new URL(url_string);
             var heading = url.searchParams.get("heading");
+            console.log('genericChecklist heading:', heading);
             $('#header').html(createHeader(heading));
             GenericQuestioneerProcessor(heading);
         });
