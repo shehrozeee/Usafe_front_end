@@ -3,15 +3,18 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>My Profile</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../../css/taskBar.css">
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"
         integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g=" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
         integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
         crossorigin="anonymous"></script>
-
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/css/bootstrap.min.css"
+        integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/js/bootstrap.min.js"
         integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
         crossorigin="anonymous"></script>
@@ -19,18 +22,404 @@
 
     <link rel="stylesheet" href="../myProfile/myProfile.css">
     <link rel="stylesheet" href="../Authentication/loginPage/loginPage.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.1.3/dist/css/bootstrap.min.css"
-        integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
     <script src="../../Js/Authentication/CheckUser.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.all.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/usafe-swal.css">
 
+    <style>
+        :root {
+            --safety-yellow: #f5b700;
+            --safety-yellow-dark: #e5a100;
+            --safety-yellow-light: #ffd54f;
+            --charcoal: #2d2d2d;
+            --charcoal-light: #3d3d3d;
+            --white: #ffffff;
+            --surface: #fafafa;
+            --text-dark: #1a1a1a;
+            --text-mid: #666666;
+            --text-light: #999999;
+            --border: #e8e8e8;
+            --radius: 16px;
+        }
 
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+            background: var(--surface);
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        /* ===== HERO SECTION ===== */
+        .profile-hero {
+            background: var(--safety-yellow);
+            padding: 48px 24px 72px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .profile-hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                repeating-linear-gradient(
+                    -45deg,
+                    transparent,
+                    transparent 30px,
+                    rgba(0,0,0,0.02) 30px,
+                    rgba(0,0,0,0.02) 31px
+                );
+            pointer-events: none;
+        }
+
+        .profile-hero::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 32px;
+            background: var(--surface);
+            border-radius: 32px 32px 0 0;
+        }
+
+        .profile-hero-inner {
+            position: relative;
+            z-index: 2;
+        }
+
+        /* ===== AVATAR ===== */
+        .profile-avatar {
+            width: 96px;
+            height: 96px;
+            border-radius: 28px;
+            background: var(--charcoal);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+
+        .profile-avatar i {
+            font-size: 40px;
+            color: var(--safety-yellow);
+        }
+
+        .profile-name {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--charcoal);
+            margin-bottom: 4px;
+            letter-spacing: -0.3px;
+        }
+
+        .profile-email {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--charcoal-light);
+            opacity: 0.7;
+            margin-bottom: 4px;
+        }
+
+        .profile-role-badge {
+            display: inline-block;
+            background: var(--charcoal);
+            color: var(--safety-yellow);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 6px 16px;
+            border-radius: 20px;
+            margin-top: 8px;
+        }
+
+        /* ===== HIDE OLD ELEMENTS ===== */
+        .profHeader,
+        .skewSet,
+        .profContainer {
+            display: none !important;
+        }
+
+        /* ===== CARD SECTION ===== */
+        .profile-card {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            margin: 0 16px 12px;
+            overflow: hidden;
+        }
+
+        .profile-card-header {
+            padding: 16px 20px 8px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--text-light);
+        }
+
+        /* ===== ACTION BUTTONS ===== */
+        .profile-action {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            background: transparent;
+            border: none;
+            padding: 16px 20px;
+            cursor: pointer;
+            transition: background 0.15s;
+            text-decoration: none;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        .profile-action:active {
+            background: var(--surface);
+        }
+
+        .profile-action-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            margin-right: 14px;
+            flex-shrink: 0;
+        }
+
+        .profile-action-icon.reset {
+            background: rgba(245, 183, 0, 0.12);
+            color: var(--safety-yellow-dark);
+        }
+
+        .profile-action-icon.logout {
+            background: rgba(211, 47, 47, 0.08);
+            color: #d32f2f;
+        }
+
+        .profile-action-text {
+            flex: 1;
+            text-align: left;
+        }
+
+        .profile-action-text .label {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-dark);
+            display: block;
+            line-height: 1.3;
+        }
+
+        .profile-action-text .sublabel {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-light);
+        }
+
+        .profile-action-arrow {
+            color: var(--text-light);
+            font-size: 14px;
+            margin-left: 8px;
+        }
+
+        .action-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 0 20px;
+        }
+
+        /* ===== HIDE OLD BUTTONS ===== */
+        .profBtn,
+        .profBtnEnd {
+            display: none !important;
+        }
+
+        /* ===== MODALS ===== */
+        .modal-content {
+            border: none;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+
+        .modal-header {
+            background: var(--safety-yellow);
+            border-bottom: none;
+            padding: 20px 24px;
+        }
+
+        .modal-title {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 800;
+            font-size: 18px;
+            color: var(--charcoal);
+        }
+
+        .modal-header .close {
+            color: var(--charcoal);
+            opacity: 0.6;
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .modal-body .input-container {
+            margin-bottom: 16px;
+        }
+
+        .modal-body .input-field {
+            width: 100%;
+            height: 48px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 0 16px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-dark);
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .modal-body .input-field:focus {
+            border-color: var(--safety-yellow);
+            box-shadow: 0 0 0 4px rgba(245, 183, 0, 0.15);
+        }
+
+        .modal-body .input-label {
+            display: none;
+        }
+
+        .modal-body .input-highlight {
+            display: none;
+        }
+
+        .modal-footer {
+            border-top: 1px solid var(--border);
+            padding: 16px 24px;
+            gap: 8px;
+        }
+
+        .modal-footer .modalBtn {
+            border: none;
+            border-radius: 12px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 700;
+            font-size: 14px;
+            padding: 10px 24px;
+            cursor: pointer;
+        }
+
+        .modal-footer .modalBtn:first-child {
+            background: var(--surface);
+            color: var(--text-mid);
+        }
+
+        .modal-footer .modalBtn:last-child {
+            background: var(--charcoal);
+            color: var(--safety-yellow);
+            box-shadow: 0 4px 12px rgba(45,45,45,0.2);
+        }
+
+        /* ===== BOTTOM NAV ===== */
+        .taskBarContainer {
+            background: var(--charcoal);
+            display: flex;
+            justify-content: center;
+            position: fixed;
+            width: 100%;
+            bottom: 0;
+            padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
+            z-index: 100;
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+        }
+
+        .taskIconContainer {
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            justify-content: space-around;
+        }
+
+        .taskIcons {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            cursor: pointer;
+        }
+
+        .taskIcons a {
+            color: var(--text-light);
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            gap: 2px;
+            transition: color 0.2s;
+        }
+
+        .faIcon {
+            font-size: 20px;
+            padding: 4px 0;
+            color: #888;
+            transition: color 0.2s;
+        }
+
+        .faIcon.active {
+            color: var(--safety-yellow) !important;
+        }
+
+        .taskIcons a:has(.faIcon.active) {
+            color: var(--safety-yellow);
+        }
+
+        /* ===== FOOTER ===== */
+        .profile-footer {
+            text-align: center;
+            padding: 24px 20px 100px;
+        }
+
+        .profile-footer p {
+            font-size: 11px;
+            color: var(--text-light);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .profile-footer span {
+            font-weight: 800;
+            color: var(--safety-yellow-dark);
+        }
+
+        .profile-version {
+            font-size: 11px;
+            color: var(--text-light);
+            margin-top: 4px;
+        }
+
+        /* ===== URDU TEXT ===== */
+        .urdu-text { display: none; }
+        .english-text { display: inline; }
+    </style>
 </head>
 
 <body>
     <header class="profHeader">
         <p>My Profile</p>
     </header>
-
 
     <div class="skewSet"></div>
 
@@ -39,37 +428,67 @@
             <i class="fa fa-user iconProf" aria-hidden="true"></i>
         </div>
         <div class="profContent">
-            <h1 id="fullName">Abdul Mannan Khan</h1>
-            <p class="p1" id="email">manager1@usafe.com</p>
-            <p class="p2" id="userRole">Account Type:Manager</p>
+            <h1 id="fullName-old">Abdul Mannan Khan</h1>
+            <p class="p1" id="email-old">manager1@usafe.com</p>
+            <p class="p2" id="userRole-old">Account Type:Manager</p>
         </div>
-
     </div>
-    <!-- <div class="logo">
-        <select id="languageSelect" onchange="changePlaceholder()">
-            <option value="en">English</option>
-            <option value="ur">Urdu</option>
-          </select>
-    </div> -->
 
+    <!-- NEW PROFILE UI -->
+    <div class="profile-hero">
+        <div class="profile-hero-inner">
+            <div class="profile-avatar">
+                <i class="fa fa-user" aria-hidden="true"></i>
+            </div>
+            <h2 class="profile-name" id="fullName">Abdul Mannan Khan</h2>
+            <p class="profile-email" id="email">manager1@usafe.com</p>
+            <div class="profile-role-badge" id="userRole">Manager</div>
+        </div>
+    </div>
 
-    <!-- Button trigger modal -->
-    <!-- <button type="button" class="btn btn-primary profBtn" data-toggle="modal" data-target="#exampleModal">
-        <i class="fa fa-lock" aria-hidden="true"></i>Change Password<i class="fa fa-arrow-right" aria-hidden="true"></i>
-    </button>
+    <div class="profile-card" style="margin-top: -16px; position: relative; z-index: 2;">
+        <div class="profile-card-header">Account</div>
 
-    <button type="button" class="btn btn-primary profBtn" data-toggle="modal" data-target="#exampleModal2">
-        <i class="fa fa-phone" aria-hidden="true"></i>Contact us<i class="fa fa-arrow-right" aria-hidden="true"></i>
-    </button> -->
+        <button class="profile-action" onclick="logOut()">
+            <div class="profile-action-icon reset">
+                <i class="fa fa-refresh" aria-hidden="true"></i>
+            </div>
+            <div class="profile-action-text">
+                <span class="label">
+                    <span class="english-text" id="englishwork">Reset Application</span>
+                    <span class="urdu-text" lang="ur">ایپلیکیشن ری سیٹ کریں</span>
+                </span>
+                <span class="sublabel">Clear cache and local data</span>
+            </div>
+            <i class="fa fa-chevron-right profile-action-arrow" aria-hidden="true"></i>
+        </button>
 
-    <button type="button" class="btn btn-primary profBtn" onclick="logOut()" id="button">
+        <div class="action-divider"></div>
+
+        <button class="profile-action" onclick="logOut()">
+            <div class="profile-action-icon logout">
+                <i class="fa fa-sign-out" aria-hidden="true"></i>
+            </div>
+            <div class="profile-action-text">
+                <span class="label">
+                    <span class="english-text">Logout</span>
+                    <span class="urdu-text" lang="ur">لاگ آوٹ</span>
+                </span>
+                <span class="sublabel">Sign out of your account</span>
+            </div>
+            <i class="fa fa-chevron-right profile-action-arrow" aria-hidden="true"></i>
+        </button>
+    </div>
+
+    <!-- Keep old buttons hidden but in DOM for any JS references -->
+    <button type="button" class="btn btn-primary profBtn" onclick="logOut()" id="button" style="display:none">
         <i class="fa fa-refresh" aria-hidden="true"></i>
-        <span class="english-text" id="englishwork">Reset Application</span>
+        <span class="english-text">Reset Application</span>
         <span class="urdu-text" lang="ur">ایپلیکیشن ری سیٹ کریں</span>
         <i class="fa fa-arrow-right" aria-hidden="true"></i>
     </button>
 
-    <button type="button" class="btn btn-primary profBtnEnd" onclick="logOut()">
+    <button type="button" class="btn btn-primary profBtnEnd" onclick="logOut()" style="display:none">
         <i class="fa fa-sign-out" aria-hidden="true"></i>
         <span class="english-text">Logout</span>
         <span class="urdu-text" lang="ur">لاگ آوٹ</span>
@@ -88,27 +507,18 @@
                     </button>
                 </div>
                 <div class="modal-body">
-
-
-
                     <div class="input-container">
                         <i class="fa fa-eye-slash passCheck" aria-hidden="true"></i>
                         <input placeholder="Old Password" class="input-field" type="text" />
-                        <label for="input-field" class="input-label">
-                            Old Password
-                        </label>
+                        <label for="input-field" class="input-label">Old Password</label>
                         <span class="input-highlight"></span>
                     </div>
                     <div class="input-container">
                         <i class="fa fa-eye-slash passCheck" aria-hidden="true"></i>
                         <input placeholder="New Password" class="input-field" type="text" />
-                        <label for="input-field" class="input-label">
-                            New Password
-                        </label>
+                        <label for="input-field" class="input-label">New Password</label>
                         <span class="input-highlight"></span>
                     </div>
-
-
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="modalBtn" data-dismiss="modal">Cancel</button>
@@ -117,7 +527,6 @@
             </div>
         </div>
     </div>
-
 
     <!-- Modal2 -->
     <div class="modal fade" id="exampleModal2" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
@@ -131,36 +540,34 @@
                     </button>
                 </div>
                 <div class="modal-body">
-
-
-
                     <div class="input-container">
                         <input placeholder="Subject" class="input-field" type="text" />
-                        <label for="input-field" class="input-label">
-                            Subject
-                        </label>
+                        <label for="input-field" class="input-label">Subject</label>
                         <span class="input-highlight"></span>
                     </div>
                     <div class="input-container">
                         <input placeholder="Details" class="input-field" type="text" />
-                        <label for="input-field" class="input-label">
-                            Details
-                        </label>
+                        <label for="input-field" class="input-label">Details</label>
                         <span class="input-highlight"></span>
                     </div>
-
-
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class=" modalBtn" data-dismiss="modal">Cancel</button>
-                    <button type="button" class=" modalBtn">Ok</button>
+                    <button type="button" class="modalBtn" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="modalBtn">Ok</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <div class="profile-footer">
+        <p>Powered by <span>Innidata</span></p>
+        <p class="profile-version">USafe v2.0</p>
+    </div>
+
     <div class="taskBar"></div>
     <script src="../../Components/taskBar/index.js"></script>
+    <script src="../../Components/bottomNav/bottomNav.js"></script>
+    <style>.taskBar, .taskBarContainer { display: none !important; }</style>
     <script src="../../Js/LanguageSelection.js"></script>
     <script>
         const togglebutton = document.querySelector('.logo');

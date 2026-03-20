@@ -1,0 +1,193 @@
+/* ===== USafe Global Design System ===== */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --usafe-yellow: #f5b700;
+    --usafe-yellow-dark: #e5a100;
+    --usafe-yellow-light: #ffd54f;
+    --usafe-charcoal: #2d2d2d;
+    --usafe-charcoal-light: #3d3d3d;
+    --usafe-white: #ffffff;
+    --usafe-surface: #fafafa;
+    --usafe-text: #1a1a1a;
+    --usafe-text-mid: #666666;
+    --usafe-text-light: #999999;
+    --usafe-border: #e8e8e8;
+    --usafe-radius: 16px;
+    --usafe-radius-sm: 12px;
+    --usafe-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    --usafe-shadow-lg: 0 4px 20px rgba(0,0,0,0.08);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+body {
+    font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+    background: var(--usafe-surface);
+    color: var(--usafe-text);
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+}
+
+/* ===== USafe Card Button (used by ReportingType.js) ===== */
+.usafe-card {
+    display: block;
+    width: calc(100% - 32px);
+    margin: 0 16px 12px;
+    background: var(--usafe-white);
+    border-radius: var(--usafe-radius);
+    padding: 18px 20px;
+    box-shadow: var(--usafe-shadow);
+    transition: transform 0.12s, box-shadow 0.15s;
+    border: none;
+    border-left: 4px solid var(--usafe-yellow);
+    cursor: pointer;
+    text-align: left;
+    font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+    -webkit-appearance: none;
+    outline: none;
+}
+
+.usafe-card:active {
+    transform: scale(0.97);
+    box-shadow: var(--usafe-shadow-lg);
+    background: #fafafa;
+}
+
+.usafe-card-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.usafe-card-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--usafe-text);
+    flex: 1;
+}
+
+.usafe-card-arrow {
+    color: var(--usafe-yellow-dark);
+    font-size: 14px;
+    margin-left: 12px;
+}
+
+/* ===== Bottom Nav ===== */
+.usafe-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--usafe-white);
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
+    z-index: 300;
+}
+
+.usafe-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    text-decoration: none;
+    padding: 6px 16px;
+    border-radius: 12px;
+    transition: background 0.2s;
+}
+
+.usafe-nav-item i {
+    font-size: 18px;
+    color: var(--usafe-text-light);
+}
+
+.usafe-nav-item span {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--usafe-text-light);
+}
+
+.usafe-nav-item.active i { color: var(--usafe-charcoal); }
+.usafe-nav-item.active span { color: var(--usafe-charcoal); }
+.usafe-nav-item.active {
+    background: rgba(245, 183, 0, 0.12);
+}
+
+/* ===== Page Container ===== */
+.usafe-page {
+    padding-bottom: 80px; /* space for bottom nav */
+}
+
+.usafe-page-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--usafe-text);
+    padding: 20px 20px 4px;
+}
+
+.usafe-page-subtitle {
+    font-size: 14px;
+    color: var(--usafe-text-mid);
+    padding: 0 20px 16px;
+}
+
+/* ===== Floating Action Button ===== */
+.usafe-fab {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    background: var(--usafe-charcoal);
+    color: var(--usafe-yellow);
+    border: none;
+    border-radius: 16px;
+    font-size: 24px;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(45, 45, 45, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 250;
+    transition: transform 0.15s;
+}
+
+.usafe-fab:active { transform: scale(0.92); }
+
+/* ===== Status Badges ===== */
+.badge-pending {
+    background: rgba(245, 183, 0, 0.15);
+    color: var(--usafe-yellow-dark);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.badge-approved {
+    background: rgba(76, 175, 80, 0.12);
+    color: #2e7d32;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.badge-rejected {
+    background: rgba(244, 67, 54, 0.12);
+    color: #c62828;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+/* ===== Utility ===== */
+.usafe-divider {
+    height: 1px;
+    background: var(--usafe-border);
+    margin: 16px 20px;
+}

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>UPL Safety Checklists</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-secondary-container": "#562000",
+              "surface-dim": "#d9dadb",
+              "error-container": "#ffdad6",
+              "surface-container-high": "#e7e8e9",
+              "secondary": "#9f4200",
+              "outline-variant": "#c6c5d4",
+              "tertiary-fixed": "#69ff87",
+              "inverse-on-surface": "#f0f1f2",
+              "background": "#f8f9fa",
+              "secondary-fixed-dim": "#ffb692",
+              "primary": "#000666",
+              "on-background": "#191c1d",
+              "on-secondary": "#ffffff",
+              "primary-fixed-dim": "#bdc2ff",
+              "on-tertiary-fixed": "#002108",
+              "inverse-surface": "#2e3132",
+              "on-primary-container": "#8690ee",
+              "surface-variant": "#e1e3e4",
+              "surface-container-lowest": "#ffffff",
+              "on-surface": "#191c1d",
+              "surface-container-low": "#f3f4f5",
+              "on-error": "#ffffff",
+              "on-primary-fixed-variant": "#343d96",
+              "surface-tint": "#4c56af",
+              "surface": "#f8f9fa",
+              "surface-container-highest": "#e1e3e4",
+              "surface-bright": "#f8f9fa",
+              "on-primary-fixed": "#000767",
+              "inverse-primary": "#bdc2ff",
+              "on-primary": "#ffffff",
+              "on-tertiary-container": "#00b048",
+              "on-tertiary": "#ffffff",
+              "tertiary-fixed-dim": "#3ce36a",
+              "primary-container": "#1a237e",
+              "surface-container": "#edeeef",
+              "outline": "#767683",
+              "on-secondary-fixed": "#341100",
+              "on-secondary-fixed-variant": "#7a3000",
+              "error": "#ba1a1a",
+              "primary-fixed": "#e0e0ff",
+              "secondary-fixed": "#ffdbcb",
+              "secondary-container": "#fd6c00",
+              "tertiary": "#002108",
+              "on-error-container": "#93000a",
+              "on-surface-variant": "#454652",
+              "tertiary-container": "#003912",
+              "on-tertiary-fixed-variant": "#00531e"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .glass-effect {
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+      }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background font-body text-on-surface min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="sticky top-0 w-full z-50 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md shadow-sm dark:shadow-none">
+<div class="flex items-center justify-between px-6 py-4 w-full">
+<div class="flex items-center gap-4">
+<button class="flex items-center justify-center p-2 rounded-full hover:bg-slate-50 transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined text-[#1A237E]" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-['Manrope'] font-bold text-lg tracking-tight text-[#1A237E] dark:text-[#8690ee]">UPL Safety Checklists</h1>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 rounded-full hover:bg-slate-50 transition-colors">
+<span class="material-symbols-outlined text-[#454652]" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</div>
+</header>
+<main class="max-w-5xl mx-auto px-6 pt-8">
+<!-- Search Section -->
+<div class="mb-10">
+<div class="relative group">
+<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-outline" data-icon="search">search</span>
+</div>
+<input class="block w-full pl-12 pr-4 py-4 bg-surface-container-lowest border-none rounded-xl shadow-[0_4px_20px_rgba(0,6,102,0.04)] focus:ring-2 focus:ring-primary/20 transition-all text-on-surface placeholder-outline-variant font-medium" placeholder="Search checklists by name or category..." type="text"/>
+</div>
+</div>
+<!-- Section Header -->
+<div class="flex items-center justify-between mb-6">
+<h2 class="font-headline font-extrabold text-2xl text-primary tracking-tight">Available Inspections</h2>
+<span class="px-3 py-1 bg-primary-container/10 text-primary text-xs font-bold rounded-full uppercase tracking-widest">9 Total</span>
+</div>
+<!-- Checklist Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Card 1: Activation Off-Site Event -->
+<div class="group relative bg-surface-container-lowest p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 flex gap-5 items-start cursor-pointer border-l-4 border-primary">
+<div class="flex-shrink-0 w-14 h-14 rounded-lg bg-primary/5 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="clipboard">assignment</span>
+</div>
+<div class="flex-grow">
+<h3 class="font-headline font-bold text-lg text-primary mb-1 group-hover:text-secondary transition-colors">Activation Off-Site Event</h3>
+<div class="flex flex-wrap gap-y-2 gap-x-4">
+<span class="text-on-surface-variant text-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-xs" data-icon="layers">layers</span> 32 sections
+                        </span>
+<span class="text-on-surface-variant text-sm flex items-center gap-1 font-semibold">
+<span class="material-symbols-outlined text-xs" data-icon="quiz">quiz</span> 183 questions
+                        </span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Card 2: Gas Cylinders -->
+<div class="group relative bg-surface-container-lowest p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 flex gap-5 items-start cursor-pointer border-l-4 border-primary">
+<div class="flex-shrink-0 w-14 h-14 rounded-lg bg-primary/5 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="flame">mode_heat</span>
+</div>
+<div class="flex-grow">
+<h3 class="font-headline font-bold text-lg text-primary mb-1 group-hover:text-secondary transition-colors">Gas Cylinders</h3>
+<div class="flex flex-wrap gap-y-2 gap-x-4">
+<span class="text-on-surface-variant text-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-xs" data-icon="layers">layers</span> 12 sections
+                        </span>
+<span class="text-on-surface-variant text-sm flex items-center gap-1 font-semibold">
+<span class="material-symbols-outlined text-xs" data-icon="quiz">quiz</span> 45 questions
+                        </span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Card 3: Boat Activity -->
+<div class="group relative bg-surface-container-lowest p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 flex gap-5 items-start cursor-pointer border-l-4 border-primary">
+<div class="flex-shrink-0 w-14 h-14 rounded-lg bg-primary/5 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="boat">directions_boat</span>
+</div>
+<div class="flex-grow">
+<h3 class="font-headline font-bold text-lg text-primary mb-1 group-hover:text-secondary transition-colors">Boat Activity</h3>
+<div class="flex flex-wrap gap-y-2 gap-x-4">
+<span class="text-on-surface-variant text-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-xs" data-icon="layers">layers</span> 8 sections
+                        </span>
+<span class="text-on-surface-variant text-sm flex items-center gap-1 font-semibold">
+<span class="material-symbols-outlined text-xs" data-icon="quiz">quiz</span> 28 questions
+                        </span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Card 4: Electrical Safety -->
+<div class="group relative bg-surface-container-lowest p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 flex gap-5 items-start cursor-pointer border-l-4 border-primary">
+<div class="flex-shrink-0 w-14 h-14 rounded-lg bg-primary/5 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="bolt">bolt</span>
+</div>
+<div class="flex-grow">
+<h3 class="font-headline font-bold text-lg text-primary mb-1 group-hover:text-secondary transition-colors">Electrical Safety</h3>
+<div class="flex flex-wrap gap-y-2 gap-x-4">
+<span class="text-on-surface-variant text-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-xs" data-icon="layers">layers</span> 15 sections
+                        </span>
+<span class="text-on-surface-variant text-sm flex items-center gap-1 font-semibold">
+<span class="material-symbols-outlined text-xs" data-icon="quiz">quiz</span> 60 questions
+                        </span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Card 5: Spot Safety Audit -->
+<div class="group relative bg-surface-container-lowest p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 flex gap-5 items-start cursor-pointer border-l-4 border-primary">
+<div class="flex-shrink-0 w-14 h-14 rounded-lg bg-primary/5 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="search">find_in_page</span>
+</div>
+<div class="flex-grow">
+<h3 class="font-headline font-bold text-lg text-primary mb-1 group-hover:text-secondary transition-colors">Spot Safety Audit</h3>
+<div class="flex flex-wrap gap-y-2 gap-x-4">
+<span class="text-on-surface-variant text-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-xs" data-icon="layers">layers</span> 10 sections
+                        </span>
+<span class="text-on-surface-variant text-sm flex items-center gap-1 font-semibold">
+<span class="material-symbols-outlined text-xs" data-icon="quiz">quiz</span> 35 questions
+                        </span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Card 6: Safety Induction Sign-Off -->
+<div class="group relative bg-surface-container-lowest p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 flex gap-5 items-start cursor-pointer border-l-4 border-primary">
+<div class="flex-shrink-0 w-14 h-14 rounded-lg bg-primary/5 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="checkmark">verified_user</span>
+</div>
+<div class="flex-grow">
+<h3 class="font-headline font-bold text-lg text-primary mb-1 group-hover:text-secondary transition-colors">Safety Induction Sign-Off</h3>
+<div class="flex flex-wrap gap-y-2 gap-x-4">
+<span class="text-on-surface-variant text-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-xs" data-icon="layers">layers</span> 5 sections
+                        </span>
+<span class="text-on-surface-variant text-sm flex items-center gap-1 font-semibold">
+<span class="material-symbols-outlined text-xs" data-icon="quiz">quiz</span> 15 questions
+                        </span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Card 7: Daily Car Maintenance -->
+<div class="group relative bg-surface-container-lowest p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 flex gap-5 items-start cursor-pointer border-l-4 border-primary">
+<div class="flex-shrink-0 w-14 h-14 rounded-lg bg-primary/5 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="car">directions_car</span>
+</div>
+<div class="flex-grow">
+<h3 class="font-headline font-bold text-lg text-primary mb-1 group-hover:text-secondary transition-colors">Daily Car Maintenance</h3>
+<div class="flex flex-wrap gap-y-2 gap-x-4">
+<span class="text-on-surface-variant text-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-xs" data-icon="layers">layers</span> 7 sections
+                        </span>
+<span class="text-on-surface-variant text-sm flex items-center gap-1 font-semibold">
+<span class="material-symbols-outlined text-xs" data-icon="quiz">quiz</span> 22 questions
+                        </span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Card 8: Vehicle Hiring -->
+<div class="group relative bg-surface-container-lowest p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 flex gap-5 items-start cursor-pointer border-l-4 border-primary">
+<div class="flex-shrink-0 w-14 h-14 rounded-lg bg-primary/5 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="truck">local_shipping</span>
+</div>
+<div class="flex-grow">
+<h3 class="font-headline font-bold text-lg text-primary mb-1 group-hover:text-secondary transition-colors">Vehicle Hiring</h3>
+<div class="flex flex-wrap gap-y-2 gap-x-4">
+<span class="text-on-surface-variant text-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-xs" data-icon="layers">layers</span> 9 sections
+                        </span>
+<span class="text-on-surface-variant text-sm flex items-center gap-1 font-semibold">
+<span class="material-symbols-outlined text-xs" data-icon="quiz">quiz</span> 30 questions
+                        </span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Card 9: HSE Site Inspection -->
+<div class="group relative bg-surface-container-lowest p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 flex gap-5 items-start cursor-pointer border-l-4 border-primary">
+<div class="flex-shrink-0 w-14 h-14 rounded-lg bg-primary/5 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="hard_hat">engineering</span>
+</div>
+<div class="flex-grow">
+<h3 class="font-headline font-bold text-lg text-primary mb-1 group-hover:text-secondary transition-colors">HSE Site Inspection</h3>
+<div class="flex flex-wrap gap-y-2 gap-x-4">
+<span class="text-on-surface-variant text-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-xs" data-icon="layers">layers</span> 20 sections
+                        </span>
+<span class="text-on-surface-variant text-sm flex items-center gap-1 font-semibold">
+<span class="material-symbols-outlined text-xs" data-icon="quiz">quiz</span> 110 questions
+                        </span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md shadow-[0_-4px_24px_rgba(0,6,102,0.06)] flex justify-around items-center px-4 pb-6 pt-3 border-t border-slate-100/20 dark:border-slate-800/20 rounded-t-3xl">
+<a class="flex flex-col items-center justify-center text-[#454652] dark:text-slate-400 px-4 py-2 hover:text-[#1A237E] transition-all cubic-bezier(0.34,1.56,0.64,1)" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-['Inter'] font-medium text-[10px] uppercase tracking-wider mt-1">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-[#1A237E] text-white rounded-2xl px-4 py-2 scale-105 transition-all cubic-bezier(0.34,1.56,0.64,1)" href="#">
+<span class="material-symbols-outlined" data-icon="fact_check">fact_check</span>
+<span class="font-['Inter'] font-medium text-[10px] uppercase tracking-wider mt-1">Checklists</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#454652] dark:text-slate-400 px-4 py-2 hover:text-[#1A237E] transition-all cubic-bezier(0.34,1.56,0.64,1)" href="#">
+<span class="material-symbols-outlined" data-icon="report_problem">report_problem</span>
+<span class="font-['Inter'] font-medium text-[10px] uppercase tracking-wider mt-1">Incidents</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#454652] dark:text-slate-400 px-4 py-2 hover:text-[#1A237E] transition-all cubic-bezier(0.34,1.56,0.64,1)" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-['Inter'] font-medium text-[10px] uppercase tracking-wider mt-1">Profile</span>
+</a>
+</nav>
+</body></html>

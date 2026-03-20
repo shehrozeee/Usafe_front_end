@@ -1,0 +1,92 @@
+/* USafe SweetAlert2 Global Theme — applies to ALL swal popups */
+
+.swal2-popup {
+    font-family: 'Plus Jakarta Sans', -apple-system, sans-serif !important;
+    border-radius: 20px !important;
+    padding: 28px 24px !important;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15) !important;
+}
+
+.swal2-title {
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    font-weight: 800 !important;
+    font-size: 20px !important;
+    color: #1a1a1a !important;
+}
+
+.swal2-html-container {
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    font-size: 14px !important;
+    color: #666 !important;
+    line-height: 1.5 !important;
+}
+
+/* Confirm button — charcoal with yellow text */
+.swal2-confirm {
+    background: #2d2d2d !important;
+    color: #f5b700 !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    font-weight: 700 !important;
+    font-size: 15px !important;
+    border-radius: 12px !important;
+    padding: 12px 32px !important;
+    box-shadow: 0 4px 12px rgba(45,45,45,0.2) !important;
+    border: none !important;
+}
+
+.swal2-confirm:hover, .swal2-confirm:focus {
+    background: #1a1a1a !important;
+    color: #f5b700 !important;
+    box-shadow: 0 6px 16px rgba(45,45,45,0.3) !important;
+}
+
+/* Cancel button */
+.swal2-cancel {
+    background: #f0f0f0 !important;
+    color: #666 !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    border-radius: 12px !important;
+    padding: 12px 28px !important;
+    border: none !important;
+}
+
+/* Success icon — yellow checkmark */
+.swal2-success-ring {
+    border-color: rgba(245, 183, 0, 0.3) !important;
+}
+
+.swal2-success-line-tip,
+.swal2-success-line-long {
+    background-color: #f5b700 !important;
+}
+
+.swal2-success-circular-line-left,
+.swal2-success-circular-line-right,
+.swal2-success-fix {
+    background: #fff !important;
+}
+
+/* Warning icon — charcoal */
+.swal2-icon.swal2-warning {
+    border-color: #f5b700 !important;
+    color: #f5b700 !important;
+}
+
+/* Error icon */
+.swal2-icon.swal2-error {
+    border-color: #d32f2f !important;
+}
+
+.swal2-x-mark-line-left,
+.swal2-x-mark-line-right {
+    background-color: #d32f2f !important;
+}
+
+/* Backdrop */
+div.swal2-container {
+    background: rgba(45, 45, 45, 0.4) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+}

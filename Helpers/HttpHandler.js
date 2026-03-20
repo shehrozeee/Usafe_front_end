@@ -59,29 +59,24 @@ const sendRequestWithFiles = (url, method, body, successCallback) => {
   });
 };
 
-const swalNotification = (message, type)=>{
-  //if success message then add a timeout of 2 seconds
-
+const swalNotification = (message, type) => {
   swal.fire({
-    title: type == "success" ? "Good job!" : "Oops!",
+    title: type == "success" ? "Done!" : "Hold on",
     text: message,
     icon: type,
-    button: "Aww yiss!",
+    confirmButtonText: "OK",
   });
-  
-}
+};
 
-function swalSuccess(message){
+function swalSuccess(message) {
   swal.fire({
-    title: "Data Saved Successfully",
+    title: "Saved Successfully",
     text: message,
     icon: "success",
     showCancelButton: false,
-    confirmButtonColor: "#3085d6",
-    confirmButtonText: "Yes, Goood Job!",
+    confirmButtonText: "Continue",
   }).then((result) => {
     if (result.isConfirmed) {
-      // window.location.reload();
       window.location.href = "/Pages/reporting/reporting.html";
     }
   });

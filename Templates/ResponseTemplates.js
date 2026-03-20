@@ -31,7 +31,7 @@ const yesNoTemplate = (questionId) => `
   <div class="response-group response-yesno">
     <div class="form-group radio-group">
       <label class="radio-label">
-        <input id="response${questionId}" value="Yes" type="radio" name="Response${questionId}" checked />
+        <input id="response${questionId}" value="Yes" type="radio" name="Response${questionId}" />
         <span class="radio-btn radio-btn-success">Yes</span>
       </label>
       <label class="radio-label">
@@ -53,7 +53,7 @@ const yesNoNaTemplate = (questionId, applicabilityLevel) => {
     ${badgeHtml}
     <div class="form-group radio-group">
       <label class="radio-label">
-        <input id="response${questionId}" value="Yes" type="radio" name="Response${questionId}" checked />
+        <input id="response${questionId}" value="Yes" type="radio" name="Response${questionId}" />
         <span class="radio-btn radio-btn-success">Yes</span>
       </label>
       <label class="radio-label">
@@ -76,7 +76,7 @@ const passFailTemplate = (questionId) => `
   <div class="response-group response-passfail">
     <div class="form-group radio-group">
       <label class="radio-label">
-        <input id="response${questionId}" value="Pass" type="radio" name="Response${questionId}" checked />
+        <input id="response${questionId}" value="Pass" type="radio" name="Response${questionId}" />
         <span class="radio-btn radio-btn-success">Pass</span>
       </label>
       <label class="radio-label">

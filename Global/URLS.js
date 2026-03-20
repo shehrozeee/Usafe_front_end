@@ -1,1 +1,1 @@
-const serverURL = "http://localhost:5050"
+const serverURL = "https://usafe.innidata.com"

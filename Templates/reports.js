@@ -1,34 +1,20 @@
 const reports = (imageSrc, status, formName, assignedTo, date, entity, id) => {
-  return `<div class='ReportContainer' style="background-color: whitesmoke;border-radius: 20px">
-      <div class='ReportContent'>
+  const isPending = status.toLowerCase() === 'pending';
+  const statusColor = isPending ? '#b8860b' : '#16a34a';
+  const statusBg = isPending ? '#fff8e1' : '#dcfce7';
+  const dateStr = new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
-        <div class='ReportImage'>
-        
-          <img src="${imageSrc? imageSrc: '../no-document.png'}" style="height: ${imageSrc? '150px':'100px'}" alt="Image not available"/>
+  return `
+    <div class="report-card" onclick="NavigateToDetails('${entity}',${id})">
+      <div class="report-card-top">
+        <div class="report-card-info">
+          <span class="report-card-type">${formName}</span>
+          <span class="report-card-date">${dateStr}</span>
         </div>
-
-        
-        <div class='ReportHeadings'>
-          <p>Status:</p>
-          <p>Type:</p>
-          <p>Assigned to:</p>
-          <p>Due Date:</p>
-        </div>
-
-        <div class='ReportDescriptions'>
-          <p style="color:${status.toLowerCase() == 'pending'? 'blue':'green'}">${status}</p>
-          <p style="text-wrap:nowrap">${formName}</p>
-          <p title = ${assignedTo}>${addStars(assignedTo)}</p>
-          <p style="color: red">${new Date(date).toDateString()}</p>
-        </div>
-
+        <span class="report-card-status" style="background:${statusBg};color:${statusColor};">${status}</span>
       </div>
-      <div style="margin-top: auto;">
-      <button class='btn btn-warning btn-block' style="background: linear-gradient(45deg, #ffeb3b, #ff9800);" onclick="NavigateToDetails('${entity}',${id})">VIEW DETAILS</button>
-      </div>
-
-    </div>
-  `;
+      ${assignedTo && assignedTo !== 'N/A' ? `<div class="report-card-assigned">Assigned to: ${addStars(assignedTo)}</div>` : ''}
+    </div>`;
 };
 
 const fetchReports = () => {
@@ -36,13 +22,16 @@ const fetchReports = () => {
 
   sendRequest("api/ChangeForm/fetchReports?userName=" + username, "GET", {}, (data) => {
     reportCountCaller(data.length);
-    let html = ``;
+    if (!data.length) {
+      $(".reports").html('<p style="text-align:center;color:#aaa;padding:40px 0;font-size:14px;">No reports yet. Tap + to create one.</p>');
+      return;
+    }
+    let html = '';
     for (const iterator of data) {
       html += reports(iterator.files ? JSON.parse(iterator.files)[0] : "", iterator.status, iterator.formName, iterator.assignedTo, iterator.createdDate, iterator.entity, iterator.id);
     }
     $(".reports").html(html);
   });
-
 };
 fetchReports();
 
@@ -50,10 +39,8 @@ const NavigateToDetails = (entity, id) => {
   window.location.href = "/Pages/reportDeatails/reportDetails.html?entity=" + entity + "&id=" + id;
 };
 
-//create a function which takes a string and add stars if length is greater than 20
 function addStars(str) {
-  if (str.length > 20) {
-    return str.slice(0, 10) + "....";
-  }
+  if (!str) return '';
+  if (str.length > 20) return str.slice(0, 18) + '...';
   return str;
 }

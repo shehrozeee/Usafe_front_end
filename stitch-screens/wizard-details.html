@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Safety Compliance Wizard - Step 1</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "secondary-fixed-dim": "#ffb692",
+              "tertiary-container": "#003912",
+              "on-tertiary-container": "#00b048",
+              "on-secondary-container": "#562000",
+              "surface": "#f8f9fa",
+              "inverse-surface": "#2e3132",
+              "surface-bright": "#f8f9fa",
+              "primary": "#000666",
+              "secondary-fixed": "#ffdbcb",
+              "error-container": "#ffdad6",
+              "on-surface": "#191c1d",
+              "on-secondary": "#ffffff",
+              "tertiary-fixed-dim": "#3ce36a",
+              "on-error-container": "#93000a",
+              "inverse-primary": "#bdc2ff",
+              "surface-container": "#edeeef",
+              "on-secondary-fixed-variant": "#7a3000",
+              "on-surface-variant": "#454652",
+              "on-primary-fixed": "#000767",
+              "secondary-container": "#fd6c00",
+              "on-primary-fixed-variant": "#343d96",
+              "surface-container-lowest": "#ffffff",
+              "primary-fixed-dim": "#bdc2ff",
+              "outline": "#767683",
+              "on-primary-container": "#8690ee",
+              "surface-container-highest": "#e1e3e4",
+              "on-tertiary-fixed-variant": "#00531e",
+              "primary-container": "#1a237e",
+              "outline-variant": "#c6c5d4",
+              "on-primary": "#ffffff",
+              "background": "#f8f9fa",
+              "surface-tint": "#4c56af",
+              "surface-container-high": "#e7e8e9",
+              "on-error": "#ffffff",
+              "surface-container-low": "#f3f4f5",
+              "primary-fixed": "#e0e0ff",
+              "on-tertiary": "#ffffff",
+              "inverse-on-surface": "#f0f1f2",
+              "surface-dim": "#d9dadb",
+              "secondary": "#9f4200",
+              "tertiary": "#002108",
+              "on-secondary-fixed": "#341100",
+              "surface-variant": "#e1e3e4",
+              "tertiary-fixed": "#69ff87",
+              "on-background": "#191c1d",
+              "on-tertiary-fixed": "#002108",
+              "error": "#ba1a1a"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "1.5rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .compliance-gradient {
+            background: linear-gradient(90deg, #ba1a1a 0%, #fd6c00 33%, #ffdbcb 66%, #00b048 100%);
+        }
+        .premium-navy-gradient {
+            background: linear-gradient(135deg, #000666 0%, #1a237e 100%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface font-body text-on-surface min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+<div class="flex items-center justify-between px-6 py-4 w-full max-w-7xl mx-auto">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[#000666]" data-icon="security">security</span>
+<h1 class="font-headline font-bold text-lg tracking-tight text-[#000666]">Safety Compliance Wizard</h1>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-xs font-semibold text-slate-500 uppercase tracking-widest hidden md:block">USafe Sentinel</span>
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary-container text-sm" data-icon="person">person</span>
+</div>
+</div>
+</div>
+</header>
+<main class="pt-24 px-4 max-w-2xl mx-auto">
+<!-- Progress Stepper -->
+<div class="mb-10 px-2">
+<div class="flex justify-between items-end mb-4">
+<div>
+<h2 class="font-headline font-extrabold text-2xl text-primary tracking-tight">Daily Car Maintenance Checklist</h2>
+<p class="text-on-surface-variant font-medium text-sm mt-1">Step 1 of 14 — Details</p>
+</div>
+<div class="text-right">
+<span class="text-xs font-bold text-secondary uppercase tracking-tighter">7% Complete</span>
+</div>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full compliance-gradient w-[7.14%] rounded-full"></div>
+</div>
+</div>
+<!-- Form Card -->
+<div class="bg-surface-container-lowest rounded-xl p-8 shadow-[0_4px_20px_rgba(0,6,102,0.03)] border border-outline-variant/10">
+<form class="space-y-6">
+<!-- Row 1: Month & Date -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="block text-sm font-semibold text-on-surface-variant">Month <span class="text-error">*</span></label>
+<select class="w-full bg-surface-container-low border-none rounded-lg px-4 py-3 text-on-surface focus:ring-2 focus:ring-primary transition-all appearance-none cursor-pointer">
+<option disabled="" selected="" value="">Select Month</option>
+<option>January</option>
+<option>February</option>
+<option>March</option>
+<option>April</option>
+<option>May</option>
+<option>June</option>
+<option>July</option>
+<option>August</option>
+<option>September</option>
+<option>October</option>
+<option>November</option>
+<option>December</option>
+</select>
+</div>
+<div class="space-y-2">
+<label class="block text-sm font-semibold text-on-surface-variant">Date <span class="text-error">*</span></label>
+<input class="w-full bg-surface-container-low border-none rounded-lg px-4 py-3 text-on-surface focus:ring-2 focus:ring-primary transition-all" type="date"/>
+</div>
+</div>
+<!-- Driver Name -->
+<div class="space-y-2">
+<label class="block text-sm font-semibold text-on-surface-variant">Driver's Name <span class="text-error">*</span></label>
+<input class="w-full bg-surface-container-low border-none rounded-lg px-4 py-3 text-on-surface placeholder:text-slate-400 focus:ring-2 focus:ring-primary transition-all" placeholder="Enter full legal name" type="text"/>
+</div>
+<!-- License & Registration -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="block text-sm font-semibold text-on-surface-variant">Driver's Licence # <span class="text-error">*</span></label>
+<input class="w-full bg-surface-container-low border-none rounded-lg px-4 py-3 text-on-surface placeholder:text-slate-400 focus:ring-2 focus:ring-primary transition-all" placeholder="ABC123456" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="block text-sm font-semibold text-on-surface-variant">Vehicle Registration Number <span class="text-error">*</span></label>
+<input class="w-full bg-surface-container-low border-none rounded-lg px-4 py-3 text-on-surface placeholder:text-slate-400 focus:ring-2 focus:ring-primary transition-all" placeholder="REG-789-XY" type="text"/>
+</div>
+</div>
+<!-- Type/Make & City -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="block text-sm font-semibold text-on-surface-variant">Type or Make <span class="text-error">*</span></label>
+<input class="w-full bg-surface-container-low border-none rounded-lg px-4 py-3 text-on-surface placeholder:text-slate-400 focus:ring-2 focus:ring-primary transition-all" placeholder="e.g. Ford Transit" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="block text-sm font-semibold text-on-surface-variant">City <span class="text-error">*</span></label>
+<input class="w-full bg-surface-container-low border-none rounded-lg px-4 py-3 text-on-surface placeholder:text-slate-400 focus:ring-2 focus:ring-primary transition-all" placeholder="Enter service city" type="text"/>
+</div>
+</div>
+<!-- Activity -->
+<div class="space-y-2">
+<label class="block text-sm font-semibold text-on-surface-variant">Activity <span class="text-error">*</span></label>
+<input class="w-full bg-surface-container-low border-none rounded-lg px-4 py-3 text-on-surface placeholder:text-slate-400 focus:ring-2 focus:ring-primary transition-all" placeholder="Describe the daily operational activity" type="text"/>
+</div>
+</form>
+</div>
+<!-- Descriptive Visual Helper (Bento Style) -->
+<div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+<div class="md:col-span-2 bg-primary-container/30 p-6 rounded-xl flex items-center gap-6">
+<div class="w-16 h-16 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="assignment_turned_in">assignment_turned_in</span>
+</div>
+<div>
+<h3 class="font-headline font-bold text-primary">Pre-Departure Essential</h3>
+<p class="text-xs text-on-primary-fixed-variant leading-relaxed">Completing this section ensures all legal and operational benchmarks are logged for regulatory compliance.</p>
+</div>
+</div>
+<div class="bg-secondary-fixed p-6 rounded-xl flex flex-col justify-between">
+<span class="material-symbols-outlined text-on-secondary-fixed-variant text-2xl" data-icon="contact_support">contact_support</span>
+<p class="text-[10px] font-bold text-on-secondary-fixed-variant uppercase tracking-widest mt-4">Need Help?</p>
+<p class="text-xs text-on-secondary-fixed-variant font-medium">Contact Safety HQ</p>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-between items-center px-8 py-6 bg-white rounded-t-[1.5rem] border-t border-slate-100 shadow-[0_-10px_40px_rgba(0,0,0,0.08)]">
+<button class="flex flex-row items-center justify-center text-slate-400 px-6 py-3 gap-2 hover:opacity-90 transition-opacity active:scale-[0.98]">
+<span class="material-symbols-outlined text-sm" data-icon="arrow_back_ios">arrow_back_ios</span>
+<span class="font-inter font-semibold text-xs uppercase tracking-widest">Previous</span>
+</button>
+<!-- Premium Navy Gradient "Next" Button -->
+<button class="flex flex-row items-center justify-center premium-navy-gradient text-white rounded-full px-10 py-4 gap-3 shadow-lg shadow-primary/20 hover:opacity-95 transition-all active:scale-[0.98]">
+<span class="font-inter font-bold text-sm uppercase tracking-wider">Next Step</span>
+<span class="material-symbols-outlined text-sm" data-icon="arrow_forward_ios">arrow_forward_ios</span>
+</button>
+</nav>
+<!-- Contextual Map Decoration -->
+<div class="fixed bottom-32 right-8 hidden lg:block w-48 h-48 rounded-xl overflow-hidden border-4 border-white shadow-2xl rotate-3">
+<img class="w-full h-full object-cover grayscale brightness-110" data-alt="Abstract map view with navigation routes" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB2BSlbA8tOTfsN6ePjnsGjpmwcSiNKVhV9RMkDvrHjwhSOBf8VYXFzkJH0DhZX2A0o0De9qOte2HocVaz9Dj6tefvk_ZkSIQKspUj366kn90rQVshWjvxXKnmTbn2feJuRZRE-LDlH01SA2kVP4wezkmPrgK-3LRwVKvx8dCOUWZR5XdquKbmK0AkIdpt04AlUV1hE4-VD-10rbozhOdBxVTrsdCfdH7mxGW8iA3fJozzvneAyhkz5ZbwMOfbEkAPTl_0PIPAYCLs"/>
+<div class="absolute inset-0 bg-primary/20 backdrop-overlay"></div>
+<div class="absolute bottom-2 left-2 bg-white/90 backdrop-blur px-2 py-1 rounded-md">
+<p class="text-[10px] font-bold text-primary uppercase">Current Zone: Active</p>
+</div>
+</div>
+</body></html>

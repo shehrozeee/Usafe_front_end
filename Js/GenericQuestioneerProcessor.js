@@ -160,9 +160,10 @@ const buildSectionStep = (section, sectionIndex) => {
       </div>`;
   });
 
+  const showBack = (_headerFields.length > 0) || (sectionIndex > 0);
   html += `</div>
     <div class="wizard-nav">
-      <button class="btn btn-wizard-back" onclick="handleBack()">← Back</button>
+      ${showBack ? '<button class="btn btn-wizard-back" onclick="handleBack()">← Back</button>' : ''}
       <button class="btn btn-wizard-next" onclick="handleNext()">Next →</button>
     </div>
   </div>`;
@@ -360,7 +361,11 @@ const buildResultPage = () => {
     });
   });
 
-  html += `<button class="btn btn-wizard-submit mt-3" onclick="submitResultSet(this)">Submit Checklist</button>`;
+  html += `
+    <div class="wizard-nav">
+      <button class="btn btn-wizard-back" onclick="goBackFromReview()">← Edit Answers</button>
+      <button class="btn btn-wizard-next" onclick="submitResultSet(this)">Submit ✓</button>
+    </div>`;
   return html;
 };
 
@@ -415,6 +420,16 @@ const returnToWizard = (obj) => {
   $("#wizardContainer").css("display", "block");
   $("#resultContainer").css("display", "none");
   showForm(0);
+};
+
+const goBackFromReview = () => {
+  // Go back to last section step
+  currentIndex = _totalSteps - 1;
+  resultSet = [];
+  $("#wizardContainer").css("display", "block");
+  $("#resultContainer").css("display", "none");
+  showForm(currentIndex);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 // ===== Area & Employee Helpers (same as before) =====

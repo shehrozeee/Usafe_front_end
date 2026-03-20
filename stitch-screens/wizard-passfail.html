@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Daily Vehicle Checks - Step 2</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "tertiary-fixed-dim": "#3ce36a",
+                        "secondary-container": "#fd6c00",
+                        "on-tertiary-fixed": "#002108",
+                        "on-secondary-container": "#562000",
+                        "surface-variant": "#e1e3e4",
+                        "inverse-primary": "#bdc2ff",
+                        "outline": "#767683",
+                        "on-primary-fixed": "#000767",
+                        "surface-container-high": "#e7e8e9",
+                        "surface-container-low": "#f3f4f5",
+                        "tertiary-fixed": "#69ff87",
+                        "tertiary-container": "#003912",
+                        "on-secondary": "#ffffff",
+                        "surface-bright": "#f8f9fa",
+                        "on-primary-fixed-variant": "#343d96",
+                        "on-error-container": "#93000a",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-fixed": "#ffdbcb",
+                        "on-surface-variant": "#454652",
+                        "secondary": "#9f4200",
+                        "primary-fixed": "#e0e0ff",
+                        "background": "#f8f9fa",
+                        "on-tertiary": "#ffffff",
+                        "outline-variant": "#c6c5d4",
+                        "on-tertiary-container": "#00b048",
+                        "on-secondary-fixed": "#341100",
+                        "on-primary": "#ffffff",
+                        "on-primary-container": "#8690ee",
+                        "tertiary": "#002108",
+                        "inverse-on-surface": "#f0f1f2",
+                        "on-background": "#191c1d",
+                        "on-secondary-fixed-variant": "#7a3000",
+                        "primary-container": "#1a237e",
+                        "on-error": "#ffffff",
+                        "surface-container-highest": "#e1e3e4",
+                        "surface-dim": "#d9dadb",
+                        "primary": "#000666",
+                        "on-surface": "#191c1d",
+                        "surface-container": "#edeeef",
+                        "on-tertiary-fixed-variant": "#00531e",
+                        "surface-tint": "#4c56af",
+                        "inverse-surface": "#2e3132",
+                        "primary-fixed-dim": "#bdc2ff",
+                        "secondary-fixed-dim": "#ffb692",
+                        "error": "#ba1a1a",
+                        "surface": "#f8f9fa",
+                        "error-container": "#ffdad6"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface antialiased">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-slate-50/70 dark:bg-slate-900/70 backdrop-blur-md shadow-sm dark:shadow-none">
+<div class="flex items-center justify-between px-6 h-16 w-full max-w-7xl mx-auto">
+<div class="flex items-center gap-3">
+<button class="active:scale-95 duration-200 text-[#000666] dark:text-[#8690ee]">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-manrope font-bold text-lg tracking-tight text-[#000666] dark:text-[#8690ee]">Daily Vehicle Checks</h1>
+</div>
+<button class="active:scale-95 duration-200 text-[#000666] dark:text-[#8690ee] font-manrope font-bold text-lg tracking-tight">Help</button>
+</div>
+<!-- Progress Bar -->
+<div class="w-full h-1 bg-surface-container">
+<div class="h-full bg-secondary w-1/2 rounded-r-full"></div>
+</div>
+</header>
+<main class="pt-20 pb-28 px-4 max-w-2xl mx-auto space-y-4">
+<!-- Step Indicator & Header Card -->
+<div class="flex flex-col gap-4">
+<div class="flex justify-between items-center px-1">
+<span class="text-on-surface-variant font-body text-xs font-semibold uppercase tracking-widest">Step 2 of 2</span>
+<span class="text-primary font-body text-xs font-bold bg-primary-fixed px-2 py-0.5 rounded-full">Inspection Phase</span>
+</div>
+<section class="bg-surface-container-lowest p-5 rounded-xl shadow-[0_4px_20px_rgba(0,6,102,0.04)] border border-outline-variant/10 flex justify-between items-center">
+<div>
+<h2 class="font-headline font-extrabold text-xl text-primary tracking-tight">Exterior &amp; Engine</h2>
+<p class="text-on-surface-variant text-sm font-body">16 points to verify</p>
+</div>
+<button class="flex items-center gap-2 px-4 py-2 border-2 border-primary-container text-primary-container rounded-full font-bold text-xs hover:bg-primary-container hover:text-white transition-all active:scale-95">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                    ✓ Mark All Pass
+                </button>
+</section>
+</div>
+<!-- Checklist List -->
+<div class="space-y-3">
+<!-- Check Card 1 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm border border-outline-variant/10 group">
+<div class="flex items-start gap-4 mb-4">
+<div class="flex-shrink-0 w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-bold text-sm">1</div>
+<div class="flex-grow">
+<h3 class="font-headline font-bold text-primary leading-tight">Check Engine oil level/filter</h3>
+<p class="text-on-surface-variant text-xs mt-1">Ensure level is between MIN and MAX marks.</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<button class="h-11 flex items-center justify-center gap-2 rounded-full border-2 border-on-tertiary-container text-on-tertiary-container font-bold hover:bg-tertiary-fixed-dim/20 transition-colors">
+<span class="material-symbols-outlined text-[20px]">check_circle</span>
+                        Pass
+                    </button>
+<button class="h-11 flex items-center justify-center gap-2 rounded-full border-2 border-outline-variant text-on-surface-variant font-bold hover:border-error hover:text-error transition-colors">
+<span class="material-symbols-outlined text-[20px]">cancel</span>
+                        Fail
+                    </button>
+</div>
+<div class="mt-4 hidden group-focus-within:block">
+<textarea class="w-full bg-surface-container-low border-none rounded-lg text-sm font-body p-3 focus:ring-2 focus:ring-primary-container h-20" placeholder="Add remarks or findings..."></textarea>
+</div>
+</div>
+<!-- Check Card 2 (Active State Example) -->
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-md border-l-4 border-secondary/50">
+<div class="flex items-start gap-4 mb-4">
+<div class="flex-shrink-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm">2</div>
+<div class="flex-grow">
+<h3 class="font-headline font-bold text-primary leading-tight">Brake system check</h3>
+<p class="text-on-surface-variant text-xs mt-1">Check fluid level and responsive pressure.</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<button class="h-11 flex items-center justify-center gap-2 rounded-full bg-on-tertiary-container text-white font-bold shadow-lg shadow-tertiary-container/20">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        Pass
+                    </button>
+<button class="h-11 flex items-center justify-center gap-2 rounded-full border-2 border-outline-variant text-on-surface-variant font-bold">
+<span class="material-symbols-outlined text-[20px]">cancel</span>
+                        Fail
+                    </button>
+</div>
+<div class="mt-4">
+<textarea class="w-full bg-surface-container-low border-none rounded-lg text-sm font-body p-3 focus:ring-2 focus:ring-primary-container h-20" placeholder="Optional: Add remarks..."></textarea>
+</div>
+</div>
+<!-- Check Card 3 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm border border-outline-variant/10">
+<div class="flex items-start gap-4 mb-4">
+<div class="flex-shrink-0 w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-bold text-sm">3</div>
+<div class="flex-grow">
+<h3 class="font-headline font-bold text-primary leading-tight">Tire pressure &amp; tread</h3>
+<p class="text-on-surface-variant text-xs mt-1">Visual inspection for wear and inflation.</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<button class="h-11 flex items-center justify-center gap-2 rounded-full border-2 border-outline-variant text-on-surface-variant font-bold">
+<span class="material-symbols-outlined text-[20px]">check_circle</span>
+                        Pass
+                    </button>
+<button class="h-11 flex items-center justify-center gap-2 rounded-full bg-error text-white font-bold shadow-lg shadow-error/20">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">report</span>
+                        Fail
+                    </button>
+</div>
+<div class="mt-4">
+<div class="flex items-center gap-2 text-error font-bold text-xs bg-error-container/30 p-2 rounded-lg">
+<span class="material-symbols-outlined text-[16px]">warning</span>
+                        Evidence Required: Add a photo and description of the defect.
+                    </div>
+<textarea class="w-full mt-2 bg-surface-container-low border border-error/20 rounded-lg text-sm font-body p-3 focus:ring-2 focus:ring-error h-20" placeholder="Explain the tire issue..."></textarea>
+</div>
+</div>
+<!-- Check Card 4 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm border border-outline-variant/10">
+<div class="flex items-start gap-4 mb-4">
+<div class="flex-shrink-0 w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-bold text-sm">4</div>
+<div class="flex-grow">
+<h3 class="font-headline font-bold text-primary leading-tight">Headlights &amp; Indicators</h3>
+<p class="text-on-surface-variant text-xs mt-1">Test all exterior lights for functionality.</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<button class="h-11 flex items-center justify-center gap-2 rounded-full border-2 border-on-tertiary-container text-on-tertiary-container font-bold">
+<span class="material-symbols-outlined text-[20px]">check_circle</span>
+                        Pass
+                    </button>
+<button class="h-11 flex items-center justify-center gap-2 rounded-full border-2 border-outline-variant text-on-surface-variant font-bold">
+<span class="material-symbols-outlined text-[20px]">cancel</span>
+                        Fail
+                    </button>
+</div>
+</div>
+<!-- Check Card 5 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm border border-outline-variant/10 opacity-60">
+<div class="flex items-start gap-4 mb-4">
+<div class="flex-shrink-0 w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-bold text-sm">5</div>
+<div class="flex-grow">
+<h3 class="font-headline font-bold text-primary leading-tight">Windscreen &amp; Wipers</h3>
+<p class="text-on-surface-variant text-xs mt-1">Check for cracks and wiper blade condition.</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<button class="h-11 flex items-center justify-center gap-2 rounded-full border-2 border-outline-variant text-on-surface-variant font-bold">
+<span class="material-symbols-outlined text-[20px]">check_circle</span>
+                        Pass
+                    </button>
+<button class="h-11 flex items-center justify-center gap-2 rounded-full border-2 border-outline-variant text-on-surface-variant font-bold">
+<span class="material-symbols-outlined text-[20px]">cancel</span>
+                        Fail
+                    </button>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<footer class="fixed bottom-0 left-0 w-full flex justify-between items-center px-6 py-4 pb-safe bg-white dark:bg-slate-900 shadow-[0_-4px_24px_rgba(0,6,102,0.06)] z-50 rounded-t-[1.5rem]">
+<!-- Back Button (Inactive Mapping) -->
+<button class="flex flex-row items-center justify-center text-[#1a237e] dark:text-slate-300 px-6 py-3 gap-2 font-inter font-semibold text-sm uppercase tracking-wider hover:opacity-90 transition-opacity active:translate-y-0.5 duration-150">
+<span class="material-symbols-outlined">chevron_left</span>
+            Back
+        </button>
+<!-- Next Button (Active Mapping) -->
+<button class="flex flex-row items-center justify-center bg-[#9f4200] text-white rounded-full px-8 py-3 gap-2 font-inter font-semibold text-sm uppercase tracking-wider hover:opacity-90 transition-opacity active:translate-y-0.5 duration-150 shadow-lg shadow-secondary/20">
+            Next
+            <span class="material-symbols-outlined">chevron_right</span>
+</button>
+</footer>
+</body></html>

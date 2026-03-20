@@ -3,17 +3,17 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>My Reporting</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://code.jquery.com/jquery-3.7.0.min.js"
     integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g=" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
     integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
     crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Tangerine">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/css/bootstrap.min.css"
     integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
-
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/js/bootstrap.min.js"
     integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
     crossorigin="anonymous"></script>
@@ -26,31 +26,356 @@
   <link rel="stylesheet" href="../../css/floatBtn.css">
   <link rel="stylesheet" href="../../css/taskBar.css">
   <link rel="stylesheet" href="../../css/loader.css">
-  <script src="
-https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.all.min.js
-"></script>
-<link href="
-https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.min.css
-" rel="stylesheet">
-<style>
-  
-</style>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.all.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/usafe-swal.css">
+  <style>
+    :root {
+      --safety-yellow: #f5b700;
+      --safety-yellow-dark: #e5a100;
+      --safety-yellow-light: #ffd54f;
+      --charcoal: #2d2d2d;
+      --charcoal-light: #3d3d3d;
+      --white: #ffffff;
+      --surface: #fafafa;
+      --text-dark: #1a1a1a;
+      --text-mid: #666666;
+      --text-light: #999999;
+      --border: #e8e8e8;
+      --radius: 16px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      background: var(--surface);
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+
+    /* ===== HEADER ===== */
+    .RepHeader {
+      background: var(--safety-yellow);
+      padding: 0 20px;
+      font-weight: 800;
+      font-size: 22px;
+      color: var(--charcoal);
+      position: fixed;
+      width: 100%;
+      top: 0;
+      z-index: 100;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      letter-spacing: -0.3px;
+    }
+
+    .RepHeader::after {
+      content: '';
+      position: absolute;
+      bottom: -16px;
+      left: 0;
+      right: 0;
+      height: 16px;
+      background: var(--surface);
+      border-radius: 16px 16px 0 0;
+    }
+
+    .refresh-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--charcoal);
+      color: var(--safety-yellow);
+      border: none;
+      border-radius: 12px;
+      padding: 8px 16px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.12s, box-shadow 0.2s;
+      box-shadow: 0 2px 8px rgba(45,45,45,0.15);
+    }
+
+    .refresh-btn:active {
+      transform: scale(0.96);
+    }
+
+    .refresh-btn i {
+      font-size: 13px;
+    }
+
+    /* ===== REPORT COUNT ===== */
+    .reportCount {
+      position: relative;
+      padding: 12px 16px 4px;
+      margin-top: 64px; /* clear fixed header */
+      background: var(--surface);
+    }
+
+    /* Override the JS-rendered report count component */
+    .ReportCountContainer {
+      display: flex !important;
+      justify-content: center !important;
+      gap: 12px;
+      background: var(--white) !important;
+      border: none !important;
+      border-radius: var(--radius) !important;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      padding: 16px !important;
+      position: static !important;
+      width: 100% !important;
+      left: auto !important;
+      top: auto !important;
+    }
+
+    .ReportCountContainer table {
+      margin: 0 !important;
+      width: 100%;
+    }
+
+    .ReportCountContainer td {
+      font-family: 'Plus Jakarta Sans', sans-serif !important;
+      padding: 4px 8px !important;
+    }
+
+    .ReportCountContainer tr:first-child td {
+      font-size: 28px !important;
+      font-weight: 800 !important;
+      color: var(--charcoal) !important;
+    }
+
+    .ReportCountContainer tr:last-child td {
+      font-size: 12px !important;
+      font-weight: 600 !important;
+      color: var(--text-mid) !important;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ===== REPORT CARDS ===== */
+    .reporting {
+      background: var(--surface);
+    }
+
+    .RepContentContainer {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      width: 100%;
+      margin-bottom: 100px;
+      margin-top: 0;
+      padding: 8px 0;
+    }
+
+    .RepContent {
+      width: 100%;
+      max-width: 500px;
+    }
+
+    /* ===== Report Cards (new) ===== */
+    .report-card {
+      background: var(--white);
+      border-radius: 14px;
+      padding: 16px;
+      margin: 0 16px 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      cursor: pointer;
+      transition: transform 0.12s;
+      border-left: 4px solid var(--safety-yellow);
+    }
+
+    .report-card:active {
+      transform: scale(0.98);
+    }
+
+    .report-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .report-card-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .report-card-type {
+      display: block;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-dark);
+      line-height: 1.3;
+    }
+
+    .report-card-date {
+      display: block;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 12px;
+      color: var(--text-mid);
+      margin-top: 3px;
+    }
+
+    .report-card-status {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 10px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .report-card-assigned {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 12px;
+      color: var(--text-mid);
+      margin-top: 6px;
+    }
+
+    /* Hide old report styles if any remnants */
+    .ReportContainer { display: none !important; }
+
+    /* ===== FAB ===== */
+    .float {
+      position: fixed;
+      width: 56px;
+      height: 56px;
+      bottom: 88px;
+      right: 20px;
+      background: var(--charcoal);
+      color: var(--safety-yellow);
+      border-radius: 16px;
+      text-align: center;
+      box-shadow: 0 6px 20px rgba(45,45,45,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      transition: transform 0.15s, box-shadow 0.15s;
+      z-index: 80;
+    }
+
+    .float:hover {
+      color: var(--safety-yellow);
+      text-decoration: none;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(45,45,45,0.4);
+    }
+
+    .float:active {
+      transform: scale(0.94);
+    }
+
+    .my-float {
+      font-size: 20px;
+      margin: 0;
+      line-height: 1;
+    }
+
+    /* ===== BOTTOM NAV ===== */
+    .taskBarContainer {
+      background: var(--charcoal);
+      display: flex;
+      justify-content: center;
+      position: fixed;
+      width: 100%;
+      bottom: 0;
+      padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
+      z-index: 100;
+      border-radius: 20px 20px 0 0;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+    }
+
+    .taskIconContainer {
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      justify-content: space-around;
+    }
+
+    .taskIcons {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      cursor: pointer;
+    }
+
+    .taskIcons a {
+      color: var(--text-light);
+      text-decoration: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      gap: 2px;
+      transition: color 0.2s;
+    }
+
+    .faIcon {
+      font-size: 20px;
+      padding: 4px 0;
+      color: #888;
+      transition: color 0.2s;
+    }
+
+    .faIcon.active {
+      color: var(--safety-yellow) !important;
+    }
+
+    .faIcon.active + br,
+    .taskIcons a:has(.faIcon.active) {
+      color: var(--safety-yellow);
+    }
+
+    /* ===== EMPTY STATE ===== */
+    .reports:empty::after {
+      content: 'No reports yet. Tap + to create one.';
+      display: block;
+      text-align: center;
+      padding: 60px 20px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-light);
+    }
+
+    /* ===== LOADER ===== */
+    #load {
+      width: 100%;
+      height: 100%;
+      position: fixed;
+      z-index: 9999;
+      background: url("../../assets/Dual Ring-1s-200px.gif") no-repeat center center rgba(250,250,250,0.85);
+    }
+  </style>
 </head>
 
 <body>
   <span id="load"></span>
-  <div class='RepHeader'>My Reportings <span style="float: right;font-size: 15px; padding: inherit; background-color: #f7da77;border-radius: 20px;" onclick="fetchReports()"> <i class="fa fa-refresh"></i> Refresh</span></div>
+  <div class='RepHeader'>
+    My Reports
+    <button class="refresh-btn" onclick="fetchReports()">
+      <i class="fa fa-refresh"></i> Refresh
+    </button>
+  </div>
   <div class="reporting">
-    <div class="reportCount "></div>
+    <div class="reportCount"></div>
 
     <div class='RepContentContainer'>
       <div class='RepContent'>
         <div class="reports"></div>
       </div>
-
     </div>
-
-
 
     <a href="/Pages/reportingType.html" class="float">
       <i class="fa fa-plus my-float"></i>
@@ -64,6 +389,8 @@ https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.min.css
   <script src="../../Templates/reports.js"></script>
   <script src="../../Components/floatBtn/index.js"></script>
   <script src="../../Components/taskBar/index.js"></script>
+  <script src="../../Components/bottomNav/bottomNav.js"></script>
+  <style>.taskBar, .taskBarContainer { display: none !important; }</style>
   <script>
     //create an on focus event and onfocus call fetchReport Function
     document.onreadystatechange = function () {

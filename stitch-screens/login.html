@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Guardian - Login</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary-fixed-dim": "#bdc2ff",
+              "secondary-fixed-dim": "#ffb692",
+              "error": "#ba1a1a",
+              "surface": "#f8f9fa",
+              "error-container": "#ffdad6",
+              "surface-container": "#edeeef",
+              "on-tertiary-fixed-variant": "#00531e",
+              "surface-tint": "#4c56af",
+              "inverse-surface": "#2e3132",
+              "on-error": "#ffffff",
+              "surface-container-highest": "#e1e3e4",
+              "surface-dim": "#d9dadb",
+              "primary": "#000666",
+              "on-surface": "#191c1d",
+              "on-primary": "#ffffff",
+              "on-primary-container": "#8690ee",
+              "tertiary": "#002108",
+              "inverse-on-surface": "#f0f1f2",
+              "on-background": "#191c1d",
+              "on-secondary-fixed-variant": "#7a3000",
+              "primary-container": "#1a237e",
+              "on-surface-variant": "#454652",
+              "secondary": "#9f4200",
+              "primary-fixed": "#e0e0ff",
+              "background": "#f8f9fa",
+              "on-tertiary": "#ffffff",
+              "outline-variant": "#c6c5d4",
+              "on-tertiary-container": "#00b048",
+              "on-secondary-fixed": "#341100",
+              "surface-bright": "#f8f9fa",
+              "on-primary-fixed-variant": "#343d96",
+              "on-error-container": "#93000a",
+              "surface-container-lowest": "#ffffff",
+              "secondary-fixed": "#ffdbcb",
+              "outline": "#767683",
+              "on-primary-fixed": "#000767",
+              "surface-container-high": "#e7e8e9",
+              "surface-container-low": "#f3f4f5",
+              "tertiary-fixed": "#69ff87",
+              "tertiary-container": "#003912",
+              "on-secondary": "#ffffff",
+              "tertiary-fixed-dim": "#3ce36a",
+              "secondary-container": "#fd6c00",
+              "on-tertiary-fixed": "#002108",
+              "on-secondary-container": "#562000",
+              "surface-variant": "#e1e3e4",
+              "inverse-primary": "#bdc2ff"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "1.5rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface font-body text-on-surface min-h-screen flex flex-col">
+<!-- TopAppBar Shared Component -->
+<nav class="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-md shadow-sm flex items-center justify-between px-6 h-16 w-full">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[#1A237E]" data-icon="shield">shield</span>
+<span class="text-xl font-extrabold text-[#1A237E] font-headline tracking-tight">The Guardian</span>
+</div>
+<div>
+<!-- Navigation shell suppressed for transactional screen -->
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex flex-col items-center justify-center px-6 pt-24 pb-12 max-w-md mx-auto w-full">
+<!-- Welcome Section -->
+<div class="w-full mb-10 text-center">
+<h1 class="font-headline font-extrabold text-3xl tracking-tight text-primary mb-2">Welcome Back</h1>
+<p class="text-on-surface-variant font-body">Sign in to access your secure dashboard.</p>
+</div>
+<!-- Login Form Container -->
+<div class="w-full bg-surface-container-lowest rounded-xl p-8 shadow-sm">
+<form class="space-y-6">
+<!-- Email Input -->
+<div class="space-y-2">
+<label class="block text-sm font-semibold font-label text-on-surface ml-1" for="email">Email</label>
+<div class="relative">
+<input class="w-full bg-surface-container-low border-none focus:ring-2 focus:ring-primary-container rounded-lg px-4 py-3 text-on-surface placeholder:text-outline outline-none transition-all" id="email" placeholder="Enter your email address" type="email"/>
+</div>
+</div>
+<!-- Password Input -->
+<div class="space-y-2">
+<div class="flex justify-between items-center ml-1">
+<label class="block text-sm font-semibold font-label text-on-surface" for="password">Password</label>
+<a class="text-xs font-semibold text-secondary hover:text-on-secondary-fixed-variant transition-colors" href="#">Forgot Password?</a>
+</div>
+<div class="relative">
+<input class="w-full bg-surface-container-low border-none focus:ring-2 focus:ring-primary-container rounded-lg px-4 py-3 text-on-surface placeholder:text-outline outline-none transition-all" id="password" placeholder="Enter your password" type="password"/>
+</div>
+</div>
+<!-- Login Button -->
+<button class="w-full bg-primary text-on-primary font-headline font-bold py-4 rounded-full shadow-md hover:bg-primary-container active:scale-95 transition-all" type="submit">
+                    Login
+                </button>
+</form>
+<!-- OR Divider -->
+<div class="relative my-8">
+<div class="absolute inset-0 flex items-center">
+<div class="w-full border-t border-outline-variant/30"></div>
+</div>
+<div class="relative flex justify-center text-xs">
+<span class="bg-surface-container-lowest px-4 text-outline font-label uppercase tracking-widest">OR</span>
+</div>
+</div>
+<!-- Sign Up Option -->
+<div class="text-center">
+<p class="text-sm text-on-surface-variant">
+                    Don't have an account? 
+                    <a class="text-secondary font-bold hover:underline transition-all decoration-2 underline-offset-4" href="#">Sign Up</a>
+</p>
+</div>
+</div>
+<!-- Visual Anchor (Editorial Style) -->
+<div class="mt-12 opacity-10">
+<span class="material-symbols-outlined text-9xl select-none" data-icon="security" style="font-variation-settings: 'FILL' 1;">security</span>
+</div>
+</main>
+<!-- Footer Shared Component -->
+<footer class="flex flex-col items-center space-y-2 w-full mt-auto py-8 bg-transparent">
+<div class="flex space-x-4">
+<a class="font-inter text-xs tracking-wide text-slate-400 hover:text-[#9f4200] transition-colors" href="#">Privacy Policy</a>
+<a class="font-inter text-xs tracking-wide text-slate-400 hover:text-[#9f4200] transition-colors" href="#">Terms of Service</a>
+</div>
+<p class="font-inter text-xs tracking-wide text-slate-400">© 2024 The Guardian Security. All rights reserved.</p>
+</footer>
+</body></html>
