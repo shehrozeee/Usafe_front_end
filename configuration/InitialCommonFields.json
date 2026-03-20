@@ -1,40 +1,21 @@
 [
-
     {
         "name": "Department",
-        "elementTag": "select",
-        "type": "cascaded",
-        "child": "Area",
-        "api": "Area/GetArea",
-        "textField": "areaName",
-        "valueField": "id",
-        "options": [],
-        "populateFunction": "populateNextSelect",
-
+        "elementTag": "input",
+        "type": "readonly-text",
         "urdu": "محکمہ"
     },
     {
         "name": "Area",
-        "elementTag": "select",
-        "type": "cascaded",
-        "child":"Reponsibility",
-        "Parent": "Department",
-        "options":[],
-        "api": "Employee/GetSiteManagerAndAreaManager",
-        "textField": "name",
-        "valueField": "id",
-        "populateFunction": "populateNextSelect",
-        "get": "Responsible",
-
+        "elementTag": "input",
+        "type": "text",
         "urdu": "ایریا"
-
     },
     {
         "name": "Description",
         "elementTag": "textarea",
         "type": "text",
-
-        "urdu" : "تفصیل"
+        "urdu": "تفصیل"
     },
     {
         "name": "Date",

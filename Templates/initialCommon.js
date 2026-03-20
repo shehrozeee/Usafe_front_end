@@ -17,12 +17,17 @@ const createInputElements = (element) => {
   const name =
     selectedLanguage === "ur" && element.urdu ? element.urdu : element.name;
   if (element.type == "file") {
-
     return createCustomCameraInput(element);
+  }
+  if (element.type == "readonly-text") {
+    return `<div class="form-group">
+      <label for="${element.name}">${name}</label>
+      <input type="text" class="form-control" id="${element.name}" placeholder="${element.name}" readonly style="background:#f5f5f5;cursor:default;">
+    </div>`;
   }
   return `<div class="form-group">
     <label for="${element.name}">${name}</label>
-    <${element.elementTag} accept="image/*" capture="user" type="${element.type}" ${element.multiple} class="form-control" id="${element.name}" placeholder="${element.name}" col="10" row="20" ></${element.elementTag}>
+    <${element.elementTag} accept="image/*" capture="user" type="${element.type}" ${element.multiple} class="form-control" id="${element.name}" placeholder="Enter ${element.name}..." col="10" row="20" ></${element.elementTag}>
     </div>`;
 };
 

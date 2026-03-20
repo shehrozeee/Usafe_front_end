@@ -25,7 +25,7 @@ function getFormValues(formId, url, obj) {
       fieldType !== "reset" &&
       fieldType !== "button"
     ) {
-      if (element.value.includes("Select") || element.value === "" && fieldType !== "file") {
+      if (!element.readOnly && (element.value.includes("Select") || element.value === "") && fieldType !== "file") {
         swalNotification("Please select a value for " + element.id, "warning");
         //border color change to red
         element.style.borderColor = "red";
