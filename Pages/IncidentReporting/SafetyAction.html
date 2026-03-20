@@ -27,118 +27,401 @@
     <script src="../../Js/Authentication/CheckUser.js"></script>
 
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #fafafa; }
-        .taskDetailContainer { max-width: 500px; margin: 0 auto; padding: 12px 16px 88px; }
-        .form-control { border-radius: 10px; border: 1.5px solid #e4e4e4; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; }
-        .form-control:focus { border-color: #f5b700; box-shadow: 0 0 0 2px rgba(245,183,0,0.12); }
-        .TextDescription, label { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 700; color: #888; }
-        .RepText, .RepText1, textarea.form-control { border-radius: 10px; border: 1.5px solid #e4e4e4; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; padding: 10px 12px; width: 100%; }
-        .RepText:focus, .RepText1:focus { border-color: #f5b700; outline: none; box-shadow: 0 0 0 2px rgba(245,183,0,0.12); }
-        .taskDate { border-radius: 10px; border: 1.5px solid #e4e4e4; padding: 10px 12px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; width: 100%; }
-        .taskDate:focus { border-color: #f5b700; outline: none; }
-        .btn-secondary { background: #2d2d2d !important; color: #f5b700 !important; border: none !important; border-radius: 12px !important; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 15px; padding: 14px; }
-        .btn-secondary:hover { background: #1a1a1a !important; }
-        .btn-warning { background: #f5b700 !important; color: #2d2d2d !important; border: none !important; border-radius: 10px !important; font-weight: 700; }
-        .card { border: none; border-radius: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
-        .card-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 15px; }
-        .table thead { background: #2d2d2d; }
-        .thead-dark th { background: #2d2d2d; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 600; border: none; }
-        .table td { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; }
-        .taskEndBtn { background: #f5b700; color: #2d2d2d; padding: 10px 20px; border-radius: 10px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 14px; }
-        .modal-content { border-radius: 16px; }
-        .modal-header { background: #f5b700; border-radius: 16px 16px 0 0; }
-        .modal-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; color: #2d2d2d; }
-        .modal-footer .btn { border-radius: 10px; }
-        .targetDate { border-radius: 10px; border: 1.5px solid #e4e4e4; padding: 10px 12px; font-family: 'Plus Jakarta Sans', sans-serif; width: 100%; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #fafafa;
+            color: #2d2d2d;
+        }
+
+        /* ── Layout ── */
+        .taskDetailContainer {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 16px 18px 100px;
+        }
+
+        /* ── Section Card ── */
+        .sam-card {
+            background: #ffffff;
+            border-radius: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            padding: 18px 16px;
+            margin-bottom: 14px;
+        }
+        .sam-card-title {
+            font-size: 14px;
+            font-weight: 800;
+            color: #2d2d2d;
+            margin-bottom: 14px;
+            letter-spacing: -0.2px;
+        }
+
+        /* ── Labels ── */
+        .sam-label {
+            font-size: 13px;
+            font-weight: 700;
+            color: #888;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        /* ── Inputs & Textareas ── */
+        .sam-input,
+        .sam-textarea,
+        .sam-select {
+            width: 100%;
+            border-radius: 10px;
+            border: 1.5px solid #e4e4e4;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 14px;
+            padding: 10px 12px;
+            background: #ffffff;
+            color: #2d2d2d;
+            transition: border-color 0.2s;
+            -webkit-appearance: none;
+        }
+        .sam-input:focus,
+        .sam-textarea:focus,
+        .sam-select:focus {
+            border-color: #f5b700;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(245,183,0,0.12);
+        }
+        .sam-textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+        .sam-input[readonly] {
+            background: #f5f5f5;
+            cursor: default;
+            color: #666;
+        }
+
+        /* ── Field Group ── */
+        .sam-field {
+            margin-bottom: 12px;
+        }
+        .sam-field:last-child {
+            margin-bottom: 0;
+        }
+
+        /* ── Two-column grid ── */
+        .sam-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        /* ── Actions Card Header ── */
+        .sam-actions-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .sam-actions-header .sam-card-title {
+            margin-bottom: 0;
+        }
+        .sam-add-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: #2d2d2d;
+            color: #f5b700;
+            border: none;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .sam-add-btn:hover {
+            background: #1a1a1a;
+        }
+
+        /* ── Actions Table ── */
+        .sam-table-wrap {
+            margin-top: 14px;
+        }
+        .sam-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 13px;
+        }
+        .sam-table thead th {
+            background: #2d2d2d;
+            color: #f5b700;
+            font-weight: 600;
+            padding: 10px 12px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .sam-table thead th:first-child { border-radius: 10px 0 0 0; }
+        .sam-table thead th:last-child { border-radius: 0 10px 0 0; }
+        .sam-table tbody td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #f0f0f0;
+            color: #2d2d2d;
+            vertical-align: middle;
+        }
+        .sam-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .sam-table tbody tr:last-child td:first-child { border-radius: 0 0 0 10px; }
+        .sam-table tbody tr:last-child td:last-child { border-radius: 0 0 10px 0; }
+        .sam-table .sam-action-icons i {
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 14px;
+            color: #888;
+            transition: color 0.2s;
+        }
+        .sam-table .sam-action-icons i:hover {
+            color: #2d2d2d;
+        }
+        .sam-table .sam-action-icons i.fa-trash:hover {
+            color: #d9534f;
+        }
+        .sam-empty-state {
+            text-align: center;
+            padding: 20px 12px;
+            color: #bbb;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        /* ── Bottom Buttons ── */
+        .sam-bottom-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 18px;
+        }
+        .sam-btn-guidelines {
+            flex: 0 0 auto;
+            padding: 14px 20px;
+            border-radius: 12px;
+            background: #ffffff;
+            color: #2d2d2d;
+            border: 1.5px solid #e4e4e4;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 700;
+            font-size: 14px;
+            text-decoration: none;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .sam-btn-guidelines:hover {
+            border-color: #f5b700;
+            text-decoration: none;
+            color: #2d2d2d;
+        }
+        .sam-btn-submit {
+            flex: 1;
+            padding: 14px;
+            border-radius: 12px;
+            background: #2d2d2d;
+            color: #f5b700;
+            border: none;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .sam-btn-submit:hover {
+            background: #1a1a1a;
+        }
+
+        /* ── Modal ── */
+        .modal-content {
+            border: none;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        .sam-modal-header {
+            background: #f5b700;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .sam-modal-title {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 700;
+            font-size: 16px;
+            color: #2d2d2d;
+            margin: 0;
+        }
+        .sam-modal-close {
+            background: none;
+            border: none;
+            font-size: 22px;
+            color: #2d2d2d;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0;
+            opacity: 0.7;
+        }
+        .sam-modal-close:hover { opacity: 1; }
+        .sam-modal-body {
+            padding: 20px;
+        }
+        .sam-modal-body .sam-field {
+            margin-bottom: 14px;
+        }
+        .sam-modal-footer {
+            padding: 0 20px 20px;
+        }
+        .sam-modal-done-btn {
+            width: 100%;
+            padding: 13px;
+            border-radius: 12px;
+            background: #2d2d2d;
+            color: #f5b700;
+            border: none;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .sam-modal-done-btn:hover {
+            background: #1a1a1a;
+        }
+
+        /* ── Override bootstrap form-control used in select ── */
+        .sam-modal-body .form-control {
+            border-radius: 10px;
+            border: 1.5px solid #e4e4e4;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 14px;
+            padding: 10px 12px;
+        }
+        .sam-modal-body .form-control:focus {
+            border-color: #f5b700;
+            box-shadow: 0 0 0 2px rgba(245,183,0,0.12);
+        }
+
+        /* Hide default dropdown classes we no longer use */
+        .dropDown { display: none; }
+        .DateTimeContainer { display: none; }
+        .DetailTextArea { display: none; }
     </style>
 </head>
 
 <body>
     <div id="header"></div>
 
-
     <div id="initialElementDiv">
-
     </div>
+
     <div class="taskDetailContainer">
 
+        <!-- Hidden legacy wrappers (kept for compatibility, hidden via CSS) -->
         <div class="dropDown"></div>
         <div class="dropDown"></div>
-
         <div class='DateTimeContainer'>
-
             <div class='reportDetailContainer'>
                 <p class='reportDetailContent'>Date</p>
                 <input class="taskDate" type="date" id="targetDate" name="targetDate">
             </div>
-
             <div class='reportDetailContainer'>
                 <p class='reportDetailContent'>Time</p>
                 <input class="taskDate" type="time" id="targetTime" name="targetTime">
             </div>
-
         </div>
-
         <div class='DetailTextArea'>
-            <label class='TextDescription'>Leader</label>
-            <textarea id="leader" name="leader" class='RepText1' placeholder="AM 3"></textarea>
+            <textarea id="leader" name="leader" class='RepText1'></textarea>
         </div>
-
         <div class='DetailTextArea'>
-            <label class='TextDescription'>Enter the Name of Participants</label>
-            <textarea id="Participants" name="Participants" class='RepText' placeholder="test Participants"></textarea>
+            <textarea id="Participants" name="Participants" class='RepText'></textarea>
         </div>
-
         <div class='DetailTextArea'>
-            <label class='TextDescription'>Topic</label>
-            <textarea id="Topic" name="Topic" class='RepText1' placeholder="topic test"></textarea>
+            <textarea id="Topic" name="Topic" class='RepText1'></textarea>
         </div>
-
         <div class='DetailTextArea'>
-            <label class='TextDescription'>Outline of facts</label>
-            <textarea id="facts" name="facts" class='RepText' placeholder="test test"></textarea>
+            <textarea id="facts" name="facts" class='RepText'></textarea>
         </div>
 
+        <!-- ════════════════════════════════════════════ -->
+        <!--  VISIBLE REDESIGNED UI                      -->
+        <!-- ════════════════════════════════════════════ -->
 
-
-        <div class="card shadow mt-lg-3" style="margin-bottom: 22px;">
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-mg-10">
-                        <h3 class="card-title">Actions and Recommendations</h3>
-                    </div>
-
-                    <a class="btn btn-link ml-auto" data-target="#VoteModal" data-toggle="modal">
-                        <i class="fas fa-chevron-circle-right"></i>
-                    </a>
+        <!-- Date & Time Card -->
+        <div class="sam-card">
+            <div class="sam-card-title">Schedule</div>
+            <div class="sam-row">
+                <div class="sam-field">
+                    <label class="sam-label" for="samDate">Date</label>
+                    <input class="sam-input" type="date" id="samDate" name="samDate">
+                </div>
+                <div class="sam-field">
+                    <label class="sam-label" for="samTime">Time</label>
+                    <input class="sam-input" type="time" id="samTime" name="samTime">
                 </div>
             </div>
         </div>
 
-
-        <table class="table">
-            <thead class="thead-dark">
-                <tr>
-                    <th>Sno</th>
-                    <th>Acc/Rec</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="tableBody">
-
-            </tbody>
-        </table>
-
-
-        <div class="taskEndBtnsContainer">
-            
-            <a class="taskEndBtn" onclick="navigateToPage('../guidlines/guidlines.html')">
-                Guidlines
-            </a>
-
+        <!-- Meeting Details Card -->
+        <div class="sam-card">
+            <div class="sam-card-title">Meeting Details</div>
+            <div class="sam-field">
+                <label class="sam-label" for="samLeader">Leader</label>
+                <input class="sam-input" type="text" id="samLeader" placeholder="e.g. Ahmed Khan">
+            </div>
+            <div class="sam-field">
+                <label class="sam-label" for="samTopic">Topic</label>
+                <input class="sam-input" type="text" id="samTopic" placeholder="Meeting topic">
+            </div>
+            <div class="sam-field">
+                <label class="sam-label" for="samParticipants">Participants</label>
+                <textarea class="sam-textarea" id="samParticipants" rows="2" placeholder="Names of participants"></textarea>
+            </div>
+            <div class="sam-field">
+                <label class="sam-label" for="samFacts">Outline of Facts</label>
+                <textarea class="sam-textarea" id="samFacts" rows="3" placeholder="Key facts discussed"></textarea>
+            </div>
         </div>
 
-        <button class="btn btn-block btn-secondary mb-lg-3" onclick="submitData()" style="background-color: black;">Submit</button>
+        <!-- Actions & Recommendations Card -->
+        <div class="sam-card">
+            <div class="sam-actions-header">
+                <div class="sam-card-title">Actions & Recommendations</div>
+                <button class="sam-add-btn" data-target="#VoteModal" data-toggle="modal" title="Add action">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+
+            <div class="sam-table-wrap">
+                <table class="sam-table">
+                    <thead>
+                        <tr>
+                            <th style="width:40px;">#</th>
+                            <th>Description</th>
+                            <th style="width:70px;text-align:right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
+                <div class="sam-empty-state" id="samEmptyState">
+                    No actions added yet. Tap <strong>+</strong> to add one.
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Buttons -->
+        <div class="sam-bottom-actions">
+            <a class="sam-btn-guidelines" onclick="navigateToPage('../guidlines/guidlines.html')">
+                Guidelines
+            </a>
+            <button class="sam-btn-submit" onclick="submitData()">Submit</button>
+        </div>
+
     </div>
 
 
@@ -147,31 +430,37 @@
         aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel">Actions and Recommendations</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <div class="sam-modal-header">
+                    <h5 class="sam-modal-title" id="exampleModalLabel">Add Action</h5>
+                    <button type="button" class="sam-modal-close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
-                <div class="modal-body">
-                    <p class="taskMHeading">Actions and Recomendations</p>
-                    <textarea id="Actions" name="Actions" class="taskDetailMText"
-                        placeholder="Action Description"></textarea>
+                <div class="sam-modal-body">
+                    <div class="sam-field">
+                        <label class="sam-label">Action / Recommendation</label>
+                        <textarea id="Actions" name="Actions" class="sam-textarea" rows="2"
+                            placeholder="Describe the action"></textarea>
+                    </div>
 
-                    <p class="taskMHeading">Raised By</p>
-                    <textarea id="RaisedBy" name="RaisedBy" class="taskDetailMText2"
-                        placeholder="this is idea or action description"></textarea>
+                    <div class="sam-field">
+                        <label class="sam-label">Raised By</label>
+                        <input id="RaisedBy" name="RaisedBy" class="sam-input" type="text"
+                            placeholder="Who raised this?">
+                    </div>
 
-                    <p class="taskMHeading ">Responsible</p>
-                    <select class="form-control responsiblity" id="Responsible"></select>
+                    <div class="sam-field">
+                        <label class="sam-label">Responsible</label>
+                        <select class="form-control responsiblity" id="Responsible"></select>
+                    </div>
 
-                    <p class="taskMHeading mt-sm-1">Target Date</p>
-                    <input class="targetDate" type="date" id="actionDate" name="targetDate">
-
-
+                    <div class="sam-field">
+                        <label class="sam-label">Target Date</label>
+                        <input class="sam-input" type="date" id="actionDate" name="targetDate">
+                    </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-warning btn-block" onclick="addAction()">Done</button>
+                <div class="sam-modal-footer">
+                    <button type="button" class="sam-modal-done-btn" onclick="addAction()">Done</button>
                 </div>
             </div>
         </div>
@@ -186,7 +475,21 @@
         location.href = url;
     }
 
+    // ── Sync visible fields → hidden original fields ──
+    function syncFields() {
+        $('#targetDate').val($('#samDate').val());
+        $('#targetTime').val($('#samTime').val());
+        $('#leader').val($('#samLeader').val());
+        $('#Participants').val($('#samParticipants').val());
+        $('#Topic').val($('#samTopic').val());
+        $('#facts').val($('#samFacts').val());
+    }
+
+    // Sync on every input
+    $(document).on('input change', '#samDate, #samTime, #samLeader, #samParticipants, #samTopic, #samFacts', syncFields);
+
     const submitData = ()=>{
+        syncFields();
         let department = $('#department').val();
         let area = $('#area').val();
         let leader = $('#leader').val();
@@ -197,8 +500,8 @@
         let targetTime = $('#targetTime').val();
         let siteId = getValue("siteId");
         let userId = getValue("userName");
-        
-        
+
+
         let data = {
             "department": department,
             "area": area,
@@ -223,7 +526,7 @@
                 if(element == "" || element == null || element == "0"){
                     swalNotification(`Please provide value for the ${key} field `,"warning");
                     //donot hide the modal
-                    
+
                     return;
                 }
             }
@@ -265,13 +568,15 @@
         let html = `<tr>
                 <td>${srno}</td>
                 <td>${description}</td>
-                <td>
-                    
+                <td class="sam-action-icons" style="text-align:right;">
+
                     <i class="fas fa-edit" onclick="openEditModal(${srno})"></i>
                     <i class="fas fa-trash" onclick="deleteAction(${srno},this)"></i>
                 </td>
             </tr>`
         $('#tableBody').append(html);
+        // Hide empty state
+        $('#samEmptyState').hide();
         srno++;
         $('#VoteModal').modal('hide');
     }
@@ -299,6 +604,10 @@
         let index = resultArray.indexOf(action);
         resultArray.splice(index,1);
         $(obj).parent().parent().remove();
+        // Show empty state if no rows left
+        if($('#tableBody tr').length === 0) {
+            $('#samEmptyState').show();
+        }
     }
 
     const createInitialElements = () => {
@@ -306,14 +615,17 @@
         let siteName = departments.length > 0 ? departments[0].name : "";
 
         let wizardHtml = `
-    <div class="taskDetailContainer">
-    <div class="form-group">
-        <label style="font-size:13px;font-weight:700;color:#888;">Department</label>
-        <input type="text" id="department" class="form-control" value="${siteName}" readonly style="background:#f5f5f5;cursor:default;">
-    </div>
-    <div class="form-group">
-        <label style="font-size:13px;font-weight:700;color:#888;">Area</label>
-        <input type="text" id="area" class="form-control" placeholder="Enter area...">
+    <div class="taskDetailContainer" style="padding-bottom:0;">
+    <div class="sam-card">
+        <div class="sam-card-title">Location</div>
+        <div class="sam-field">
+            <label class="sam-label">Department</label>
+            <input type="text" id="department" class="sam-input" value="${siteName}" readonly>
+        </div>
+        <div class="sam-field">
+            <label class="sam-label">Area</label>
+            <input type="text" id="area" class="sam-input" placeholder="Enter area...">
+        </div>
     </div>
     </div>`;
         $('#initialElementDiv').html(wizardHtml);
