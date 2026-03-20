@@ -21,6 +21,183 @@ let resultSet = [];
 let _headerFields = [];
 let _totalSteps = 0;
 
+// ===== Auto-Save Draft =====
+let _draftSaveInterval = null;
+let _draftDebounceTimer = null;
+
+const _getDraftKey = () => `usafe_draft_${sectionFor}_${_currentCheckList}`;
+
+const collectDraftData = () => {
+  const headerValues = collectHeaderValues ? collectHeaderValues() : [];
+  const sections = [];
+
+  _allSections.forEach((section, sIdx) => {
+    let globalOffset = 0;
+    for (let i = 0; i < sIdx; i++) {
+      globalOffset += _allSections[i].questions.length;
+    }
+
+    const responses = [];
+    section.questions.forEach((q, qIdx) => {
+      const questionId = globalOffset + qIdx + 1;
+      const responseType = q.responseType || 'compliance';
+      const values = collectResponseValue(responseType, questionId);
+      responses.push({
+        questionId,
+        responseType,
+        responseValue: values.responseValue || '',
+        compliance: values.compliance || '',
+        status: values.status || '',
+        actions: values.actions || '',
+        responsibility: values.responsibility || '',
+        remarks: values.remarks || ''
+      });
+    });
+
+    sections.push({ sectionIndex: sIdx, responses });
+  });
+
+  return {
+    headerValues,
+    sections,
+    currentIndex,
+    timestamp: Date.now()
+  };
+};
+
+const saveDraft = () => {
+  if (!_currentCheckList) return;
+  try {
+    const draft = collectDraftData();
+    localStorage.setItem(_getDraftKey(), JSON.stringify(draft));
+  } catch (e) {
+    console.warn('Auto-save draft failed:', e);
+  }
+};
+
+const clearDraft = () => {
+  if (_draftSaveInterval) clearInterval(_draftSaveInterval);
+  if (_draftDebounceTimer) clearTimeout(_draftDebounceTimer);
+  try {
+    localStorage.removeItem(_getDraftKey());
+  } catch (e) {
+    console.warn('Clear draft failed:', e);
+  }
+};
+
+const restoreDraft = (draft) => {
+  // Restore header field values
+  if (draft.headerValues && draft.headerValues.length > 0) {
+    draft.headerValues.forEach((hv, i) => {
+      const el = document.getElementById(`headerField_${i}`);
+      if (el) el.value = hv.value || '';
+    });
+  }
+
+  // Restore section responses
+  if (draft.sections) {
+    draft.sections.forEach(sec => {
+      sec.responses.forEach(resp => {
+        const qId = resp.questionId;
+        const type = resp.responseType || 'compliance';
+
+        if (type === 'compliance') {
+          if (resp.compliance) {
+            const radio = document.querySelector(`input[name="Compliance${qId}"][value="${resp.compliance}"]`);
+            if (radio) radio.checked = true;
+          }
+          const statusEl = document.getElementById(`status${qId}`);
+          if (statusEl && resp.status) statusEl.value = resp.status;
+          const actionsEl = document.getElementById(`actions${qId}`);
+          if (actionsEl && resp.actions) actionsEl.value = resp.actions;
+          // Note: responsibility dropdowns may not be populated yet; skip for now
+        } else if (['yes_no', 'yes_no_na', 'pass_fail'].includes(type)) {
+          if (resp.responseValue) {
+            const radio = document.querySelector(`input[name="Response${qId}"][value="${resp.responseValue}"]`);
+            if (radio) radio.checked = true;
+          }
+          const remarksEl = document.getElementById(`remarks${qId}`);
+          if (remarksEl && resp.remarks) remarksEl.value = resp.remarks;
+        } else if (type === 'text' || type === 'number' || type === 'date') {
+          const el = document.getElementById(`response${qId}`);
+          if (el && resp.responseValue) el.value = resp.responseValue;
+        } else if (type === 'acknowledged') {
+          const el = document.getElementById(`response${qId}`);
+          if (el) el.checked = (resp.responseValue === 'Acknowledged');
+        }
+      });
+    });
+  }
+
+  // Restore wizard position
+  if (typeof draft.currentIndex === 'number' && draft.currentIndex < _totalSteps) {
+    currentIndex = draft.currentIndex;
+    showForm(currentIndex);
+  }
+};
+
+const checkForDraft = () => {
+  try {
+    const raw = localStorage.getItem(_getDraftKey());
+    if (!raw) {
+      startDraftAutoSave();
+      return;
+    }
+
+    const draft = JSON.parse(raw);
+    const ageMs = Date.now() - (draft.timestamp || 0);
+    const maxAgeMs = 24 * 60 * 60 * 1000; // 24 hours
+
+    if (ageMs > maxAgeMs) {
+      // Draft too old — discard silently
+      localStorage.removeItem(_getDraftKey());
+      startDraftAutoSave();
+      return;
+    }
+
+    const draftTime = new Date(draft.timestamp).toLocaleString();
+    swal.fire({
+      title: 'Resume Draft?',
+      html: `You have an unsaved draft from <strong>${draftTime}</strong>. Would you like to resume?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Resume',
+      cancelButtonText: 'Start Fresh',
+      confirmButtonColor: '#28a745',
+      cancelButtonColor: '#dc3545',
+      allowOutsideClick: false
+    }).then((result) => {
+      if (result.isConfirmed) {
+        restoreDraft(draft);
+      } else {
+        localStorage.removeItem(_getDraftKey());
+      }
+      startDraftAutoSave();
+    });
+  } catch (e) {
+    console.warn('Draft check failed:', e);
+    startDraftAutoSave();
+  }
+};
+
+const startDraftAutoSave = () => {
+  // Save every 10 seconds
+  _draftSaveInterval = setInterval(saveDraft, 10000);
+
+  // Debounced save on input change (2s)
+  const wizardContainer = document.getElementById('wizardContainer');
+  if (wizardContainer) {
+    wizardContainer.addEventListener('input', () => {
+      if (_draftDebounceTimer) clearTimeout(_draftDebounceTimer);
+      _draftDebounceTimer = setTimeout(saveDraft, 2000);
+    });
+    wizardContainer.addEventListener('change', () => {
+      if (_draftDebounceTimer) clearTimeout(_draftDebounceTimer);
+      _draftDebounceTimer = setTimeout(saveDraft, 2000);
+    });
+  }
+};
+
 const GenericQuestioneerProcessor = (sectionName) => {
   // Try getFormMeta first (for UPL checklists with header fields)
   sendRequest(`api/checklist/getFormMeta?checkListFormName=${sectionFor}&formName=${sectionName}`, 'GET', null, (data) => {
@@ -94,6 +271,9 @@ const buildSectionWizard = () => {
   $("#resultContainer").html(resultHtml);
 
   showForm(0);
+
+  // Check for a saved draft and offer to resume
+  checkForDraft();
 };
 
 // ===== Header Step =====
@@ -408,6 +588,7 @@ const submitResultSet = (obj) => {
 
   sendRequest('api/checklist/saveCheckList', 'POST', JSON.stringify(payload), result => {
     if (result.status == 200) {
+      clearDraft();
       swalSuccess("Checklist Saved Successfully");
     }
   });

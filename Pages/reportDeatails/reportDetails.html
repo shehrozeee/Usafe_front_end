@@ -3,8 +3,10 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Reporting Details</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://code.jquery.com/jquery-3.7.0.min.js"
     integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g=" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
@@ -21,15 +23,160 @@
   <link rel="stylesheet" href="../../css/dropDown.css">
   <!-- <link rel="stylesheet" href="../../Components/dateTime/dateTime.css"> -->
   <link rel="stylesheet" href="../../css/header.css">
+  <link rel="stylesheet" href="../../css/loader.css">
+  <link rel="stylesheet" href="../../css/usafe-global.css">
   <script src="../../Templates/Header.js"></script>
   <script src="../../Templates/GenericCheckList.js"></script>
   <script src="../../Js/Authentication/CheckUser.js"></script>
-  <link rel="stylesheet" href="../../css/loader.css">
   <script src="
   https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.all.min.js
   "></script>
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../css/usafe-swal.css">
+
+    <style>
+        :root {
+            --safety-yellow: #f5b700;
+            --safety-yellow-dark: #e5a100;
+            --charcoal: #2d2d2d;
+            --white: #ffffff;
+            --surface: #fafafa;
+            --text-dark: #1a1a1a;
+            --text-mid: #666666;
+            --text-light: #999999;
+            --border: #e8e8e8;
+            --radius: 16px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+            background: var(--surface);
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        /* ===== CONTAINER ===== */
+        .RepDetailsContainer {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 16px;
+            margin-top: 60px;
+            margin-bottom: 80px;
+        }
+
+        .RepDetailsContent {
+            width: 100% !important;
+        }
+
+        /* ===== FORM FIELDS ===== */
+        .DropContainer {
+            margin-bottom: 4px;
+        }
+
+        .DropHeaders {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-mid);
+            margin-bottom: 2px;
+        }
+
+        .dropContent {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .dropContent p {
+            margin: 0;
+        }
+
+        .DetailTextArea {
+            margin-top: 16px;
+        }
+
+        .DetailTextArea label {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-mid);
+        }
+
+        .DetailTextArea .dropContent {
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* ===== DATE/TIME ===== */
+        .DateTimeContainer {
+            gap: 12px;
+        }
+
+        .reportDetailContainer {
+            background: var(--white) !important;
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-top: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .reportDetailContent {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-mid);
+        }
+
+        .reportDetailContainer h2 {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 14px !important;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin: 0;
+        }
+
+        .reportDetailContainer i {
+            color: var(--safety-yellow-dark);
+            font-size: 16px;
+        }
+
+        /* ===== PHOTOS ===== */
+        .RepPhoto {
+            margin-top: 16px;
+        }
+
+        .RepPhoto label {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-mid);
+        }
+
+        .RepPhoto img {
+            border-radius: 12px;
+            object-fit: cover;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        /* ===== DIVIDERS ===== */
+        hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 12px 0;
+        }
+
+        /* ===== LOADER ===== */
+        #load {
+            width: 100%;
+            height: 100%;
+            position: fixed;
+            z-index: 9999;
+            background: url("../../assets/Dual Ring-1s-200px.gif") no-repeat center center rgba(250,250,250,0.85);
+        }
+    </style>
 </head>
 
 <body>
@@ -163,6 +310,7 @@
       }
     }
   </script>
+  <script src="../../Components/bottomNav/bottomNav.js"></script>
 </body>
 
 </html>
