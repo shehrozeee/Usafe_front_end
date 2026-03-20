@@ -32,18 +32,18 @@ const createInputElements = (element) => {
 };
 
 const createCustomCameraInput = (element) => {
-  return `<div class="row">
-  <div class="col-md-6">
-    <div class="form-group">
-      <label for="${element.name}">Upload File</label>
-      <input type="file" class="form-control" id="${element.name}">
+  return `<div class="form-group">
+    <label for="${element.name}">Upload File</label>
+    <input type="file" class="form-control" id="${element.name}" style="display:none;">
+    <div style="display:flex; gap:12px;">
+      <button type="button" class="btn-upload-file" onclick="document.getElementById('${element.name}').click()">
+        <i class="fas fa-cloud-upload-alt"></i> Upload File
+      </button>
+      <a href="#camera" class="btn-take-photo">
+        <i class="fas fa-camera"></i> Take Photo
+      </a>
     </div>
-  </div>
-  <div class="col-md-6">
-    <div class="form-group">
-      <label for="${element.name}">Take Picture</label> <br>
-      <a href="#camera" class="btn btn-primary" >Open Camera</a>
-    </div>
+    <p id="${element.name}-filename" style="font-size:12px;color:#888;margin-top:6px;"></p>
   </div>
   <p id="status"></p>
   `;
@@ -128,6 +128,7 @@ function passBlobToInputElement(blob) {
     fileInput.classList.add('form-control'); // Add any existing classes
     fileInput.id = 'Photo'; // Set the id attribute
     fileInput.placeholder = 'Photo'; // Set the placeholder attribute
+    fileInput.style.display = 'none'; // Keep hidden like the template
 
     // Create a DataTransfer object and add the File object
     var dataTransfer = new DataTransfer();
@@ -146,7 +147,20 @@ function passBlobToInputElement(blob) {
     existingFileInput.parentNode.replaceChild(fileInput, existingFileInput);
     //status
     document.getElementById('status').innerText = 'image saved in the input element';
+    // Update filename display
+    var filenameEl = document.getElementById('Photo-filename');
+    if (filenameEl) filenameEl.innerText = 'image.jpg';
 }
+
+// Show selected filename when file input changes
+document.addEventListener('change', function(e) {
+    if (e.target && e.target.type === 'file' && e.target.id) {
+        var filenameEl = document.getElementById(e.target.id + '-filename');
+        if (filenameEl && e.target.files.length > 0) {
+            filenameEl.innerText = e.target.files[0].name;
+        }
+    }
+});
 
 //#endregion
 
