@@ -8,6 +8,7 @@ const Login = () => {
             if (data.status === 'success') {
                 localStorage.setItem("userName", data.userName);
                 localStorage.setItem("siteId", data.siteId);
+                localStorage.setItem("siteName", data.siteName || "");
                 //set token
                 localStorage.setItem("token", data.token);
                 localStorage.setItem("userRole", data.userRole);

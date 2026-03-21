@@ -5,10 +5,15 @@ $.get('../../configuration/InitialCommonFields.json', structure => {
             createInitialCommonTemplate(element));
     });
 
-    // Auto-fill Department with agency/site name
-    let departments = JSON.parse(localStorage.getItem("departments") || "[]");
-    if (departments.length > 0 && document.getElementById('Department')) {
-        document.getElementById('Department').value = departments[0].name;
+    // Auto-fill Department with site name
+    let siteName = localStorage.getItem("siteName") || "";
+    if (siteName && document.getElementById('Department')) {
+        document.getElementById('Department').value = siteName;
+    } else {
+        let departments = JSON.parse(localStorage.getItem("departments") || "[]");
+        if (departments.length > 0 && document.getElementById('Department')) {
+            document.getElementById('Department').value = departments[0].name;
+        }
     }
 });
 
