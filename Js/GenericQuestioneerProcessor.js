@@ -489,7 +489,6 @@ const displayResults = () => {
         if (responseType === 'compliance') {
           if (values.status) detail += `<p><small>Status:</small> ${values.status}</p>`;
           if (values.actions) detail += `<p><small>Actions:</small> ${values.actions}</p>`;
-          if (values.responsibility) detail += `<p><small>Responsibility:</small> ${values.responsibility}</p>`;
         } else if (values.remarks) {
           detail += `<p><small>Remarks:</small> ${values.remarks}</p>`;
         }
@@ -563,15 +562,9 @@ const submitResultSet = (obj) => {
   // Validate all non-compliant items have actions/responsibility
   const nonCompliant = resultSet.filter(x => x.compliance === 'NonCompliant');
   const missingActions = nonCompliant.filter(x => !x.actions);
-  const missingResp = nonCompliant.filter(x => !x.responsibility);
 
   if (missingActions.length > 0) {
     swalNotification(`Please provide actions for non-compliant items: ${missingActions.map(x => x.questionId).join(', ')}`, 'warning');
-    returnToWizard(obj);
-    return;
-  }
-  if (missingResp.length > 0) {
-    swalNotification(`Please assign responsibility for non-compliant items: ${missingResp.map(x => x.questionId).join(', ')}`, 'warning');
     returnToWizard(obj);
     return;
   }
@@ -628,17 +621,5 @@ const getAreas = (element) => {
 };
 
 const getResponsiblePersons = () => {
-  let siteId = getValue("siteId");
-  let departmentId = $("#department option:selected").val();
-  let areaId = $("#area option:selected").val();
-  sendRequest(`Employee/GetAllEmployeeOfSite?siteId=${siteId}&deptId=${departmentId}&areaId=${areaId}`, "GET", null, (response) => {
-    let responsibilityElements = document.querySelectorAll('.responsiblity');
-    responsibilityElements.forEach(element => {
-      let employeeHtml = "<option selected disabled hidden> Select Responsible Person </option>";
-      response.forEach(employee => {
-        employeeHtml += `<option value="${employee.id}">${employee.name}</option>`;
-      });
-      element.innerHTML = employeeHtml;
-    });
-  });
+  // Responsibility is now auto-assigned on the backend — no dropdown to populate
 };

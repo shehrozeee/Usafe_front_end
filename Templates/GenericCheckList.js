@@ -18,7 +18,6 @@ const createResultHtml = (questions) => {
               <p>Compliance: <span id="question${index + 1}ComplianceValue">${question.compliance || ''}</span></p>
               <p>Status: <span id="question${index + 1}StatusValue">${question.status || ''}</span></p>
               <p>Actions / Remarks: <span id="question${index + 1}ActionsValue">${question.actions || ''}</span></p>
-              <p>Responsibility: <span id="question${index + 1}ResponsibilityValue">${question.responsibility || ''}</span></p>
             </div>
           </div>
         </div>`).join("")}
@@ -44,7 +43,6 @@ const createSafetyActionsHtml = (actions) => {
               <p>Target Date: <span id="question${index + 1}ComplianceValue">${action.targetDate}</span></p>
               <p>Status: <span id="question${index + 1}StatusValue">${action.status}</span></p>
               <p>Actions / Remarks: <span id="question${index + 1}ActionsValue">${action.actions}</span></p>
-              <p>Responsibility: <span id="question${index + 1}ResponsibilityValue">${action.responsibility}</span></p>
             </div>
           </div>
         </div>`).join("")}

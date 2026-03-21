@@ -20,11 +20,6 @@ const complianceTemplate = (questionId) => `
       <label>Actions / Remarks</label>
       <textarea id="actions${questionId}" class="form-control" rows="2" placeholder="Required if Non Compliant..."></textarea>
     </div>
-    <div class="form-group">
-      <label>Responsibility</label>
-      <select id="responsibility${questionId}" class="form-control responsiblity">
-      </select>
-    </div>
   </div>`;
 
 const yesNoTemplate = (questionId) => `

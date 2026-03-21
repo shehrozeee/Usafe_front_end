@@ -456,11 +456,6 @@
                     </div>
 
                     <div class="sam-field">
-                        <label class="sam-label">Responsible</label>
-                        <select class="form-control responsiblity" id="Responsible"></select>
-                    </div>
-
-                    <div class="sam-field">
                         <label class="sam-label">Target Date</label>
                         <input class="sam-input" type="date" id="actionDate" name="targetDate">
                     </div>
@@ -551,12 +546,11 @@
 
         let description = $('#Actions').val();
         let raisedBy = $('#RaisedBy').val();
-        let responsible = $('#Responsible :selected').val();
         let actionDate = $('#actionDate').val();
         let obj = {
             "description": description,
             "raisedBy": raisedBy,
-            "responsible": responsible,
+            "responsible": "",
             "targetDate": actionDate,
             srno
         };
@@ -564,7 +558,8 @@
         for (const key in obj) {
             if (obj.hasOwnProperty(key)) {
                 const element = obj[key];
-                if(element == "" || element == null || element == "Select Responsible Person"){
+                if(key === 'responsible') continue;
+                if(element == "" || element == null){
                     swalNotification(`Please provide value for the ${key} field `,"warning");
                     return;
                 }
@@ -591,7 +586,6 @@
     $('#VoteModal').on('hide.bs.modal', function (e) {
         $('#Actions').val("");
         $('#RaisedBy').val("");
-        $('#Responsible').val("");
         $('#targetDate').val("");
     });
 
@@ -599,7 +593,6 @@
         let action = resultArray.find(x => x.srno == srno);
         $('#Actions').val(action.description);
         $('#RaisedBy').text(action.raisedBy);
-        $('#Responsible').val(action.responsible);
         $('#targetDate').val(action.targetDate);
         $('#VoteModal').modal('show');
 

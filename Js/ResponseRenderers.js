@@ -36,7 +36,7 @@ const collectResponseValue = (responseType, questionId) => {
         compliance: selected ? selected.value : '',
         status: document.getElementById(`status${questionId}`)?.value || '',
         actions: document.getElementById(`actions${questionId}`)?.value || '',
-        responsibility: getSelectedText(`responsibility${questionId}`)
+        responsibility: ''
       };
     }
     case 'yes_no':
@@ -121,13 +121,8 @@ const validateQuestionResponse = (responseType, questionId) => {
       const selected = document.querySelector(`input[name="Compliance${questionId}"]:checked`);
       if (selected && selected.value === 'NonCompliant') {
         const actions = document.getElementById(`actions${questionId}`)?.value;
-        const resp = document.getElementById(`responsibility${questionId}`)?.value;
         if (!actions) {
           swalNotification('Please enter actions for non-compliant item', 'warning');
-          return false;
-        }
-        if (!resp || resp === 'Select Responsible Person') {
-          swalNotification('Please select responsible person for non-compliant item', 'warning');
           return false;
         }
       }

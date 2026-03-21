@@ -6,15 +6,5 @@
         "multiple": "multiple",
         "capture": "environment",
         "urdu" : "تصاویر اپ لوڈ کریں"
-    },
-    {
-        "name": "Reponsibility",
-        "elementTag": "select",
-        "type": "",
-        "Parent": "Area",
-        "options": [
-        ],
-
-        "urdu" :"ذمہ داری"
     }
 ]
