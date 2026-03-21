@@ -13,3 +13,8 @@ if (expiryDate && expiryDate > currentDate) {
 if (!userName) {
   window.location.href = "/Pages/Authentication/loginPage/loginPage.html";
 }
+
+// Onboarding gate — redirect first-time users (skip if already on onboarding page)
+if (!localStorage.getItem('usafe_onboarded') && !window.location.pathname.includes('/Pages/onboarding/')) {
+  window.location.href = '/Pages/onboarding/onboarding.html';
+}

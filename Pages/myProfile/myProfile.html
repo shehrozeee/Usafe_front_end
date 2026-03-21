@@ -23,6 +23,8 @@
     <link rel="stylesheet" href="../myProfile/myProfile.css">
     <link rel="stylesheet" href="../Authentication/loginPage/loginPage.css">
     <script src="../../Js/Authentication/CheckUser.js"></script>
+    <script src="../../Global/URLS.js"></script>
+    <script src="../../Helpers/HttpHandler.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.all.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../css/usafe-swal.css">
@@ -368,7 +370,27 @@
         </div>
     </div>
 
+    <!-- Activity Card -->
     <div class="profile-card" style="margin-top: -16px; position: relative; z-index: 2;">
+        <div class="profile-card-header">Activity</div>
+        <div style="padding: 16px 20px; display: flex; gap: 12px;">
+            <div style="flex: 1; background: rgba(245, 183, 0, 0.08); border-radius: 14px; padding: 16px; text-align: center;">
+                <div id="reportCount" style="font-size: 28px; font-weight: 800; color: var(--charcoal); line-height: 1;">--</div>
+                <div style="font-size: 12px; font-weight: 600; color: var(--text-light); margin-top: 4px;">Reports</div>
+            </div>
+            <div style="flex: 1; background: rgba(45, 45, 45, 0.05); border-radius: 14px; padding: 16px; text-align: center;">
+                <div id="taskCount" style="font-size: 28px; font-weight: 800; color: var(--charcoal); line-height: 1;">--</div>
+                <div style="font-size: 12px; font-weight: 600; color: var(--text-light); margin-top: 4px;">Tasks</div>
+            </div>
+        </div>
+        <div id="siteInfo" style="padding: 0 20px 16px; display: none;">
+            <div style="background: var(--surface); border-radius: 10px; padding: 10px 16px; font-size: 13px; font-weight: 600; color: var(--text-mid);">
+                <span style="color: var(--text-light);">Site:</span> <span id="siteName"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="profile-card">
         <div class="profile-card-header">Account</div>
 
         <button class="profile-action" onclick="logOut()">
@@ -498,6 +520,28 @@
             $('#fullName').text(localStorage.getItem('fullName'));
             $('#email').text(localStorage.getItem('userName'));
             $('#userRole').text(localStorage.getItem('userRole'));
+
+            // Show site name if available
+            var siteName = localStorage.getItem('siteName');
+            if (siteName) {
+                $('#siteName').text(siteName);
+                $('#siteInfo').show();
+            }
+
+            // Fetch report count
+            var profileUserName = localStorage.getItem('userName');
+            if (profileUserName) {
+                sendRequest("api/ChangeForm/fetchReports?userName=" + encodeURIComponent(profileUserName), "GET", {}, function(data) {
+                    var count = Array.isArray(data) ? data.length : 0;
+                    $('#reportCount').text(count);
+                });
+
+                // Fetch task count
+                sendRequest("api/ChangeForm/fetchmyTasks?userName=" + encodeURIComponent(profileUserName), "GET", {}, function(data) {
+                    var count = Array.isArray(data) ? data.length : 0;
+                    $('#taskCount').text(count);
+                });
+            }
         });
 
         function logOut() {

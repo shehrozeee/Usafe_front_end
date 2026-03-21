@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Page Not Found - USafe</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #f8f8f8;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 32px;
+            text-align: center;
+        }
+
+        .error-logo {
+            width: 80px;
+            height: auto;
+            margin-bottom: 32px;
+            filter: drop-shadow(0 4px 12px rgba(0,0,0,0.1));
+        }
+
+        .error-code {
+            font-size: 72px;
+            font-weight: 800;
+            color: #f5b700;
+            line-height: 1;
+            margin-bottom: 8px;
+            letter-spacing: -2px;
+        }
+
+        .error-title {
+            font-size: 24px;
+            font-weight: 800;
+            color: #2d2d2d;
+            margin-bottom: 8px;
+            letter-spacing: -0.3px;
+        }
+
+        .error-subtitle {
+            font-size: 15px;
+            font-weight: 500;
+            color: #888;
+            margin-bottom: 40px;
+            max-width: 280px;
+            line-height: 1.5;
+        }
+
+        .error-home-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #2d2d2d;
+            color: #f5b700;
+            border: none;
+            border-radius: 16px;
+            padding: 14px 32px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            text-decoration: none;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            transition: transform 0.15s;
+        }
+
+        .error-home-btn:active {
+            transform: scale(0.97);
+        }
+
+        .error-footer {
+            position: fixed;
+            bottom: 24px;
+            font-size: 11px;
+            color: #aaa;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .error-footer span {
+            font-weight: 800;
+            color: #c99200;
+        }
+    </style>
+</head>
+
+<body>
+    <img src="../../assets/usafeLogo.png" alt="USafe" class="error-logo">
+    <div class="error-code">404</div>
+    <h1 class="error-title">Page Not Found</h1>
+    <p class="error-subtitle">The page you are looking for does not exist or has been moved.</p>
+    <a href="/Pages/reporting/reporting.html" class="error-home-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+        Go Home
+    </a>
+    <div class="error-footer">Powered by <span>Innidata</span></div>
+</body>
+
+</html>

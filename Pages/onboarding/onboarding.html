@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Welcome to USafe</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/usafe-onboarding.css">
+</head>
+
+<body>
+    <div class="onboarding-carousel">
+        <!-- Radio inputs drive the carousel -->
+        <input type="radio" name="slide" id="slide1" checked>
+        <input type="radio" name="slide" id="slide2">
+        <input type="radio" name="slide" id="slide3">
+
+        <!-- Skip button -->
+        <button class="onboarding-skip" onclick="completeOnboarding()">Skip</button>
+
+        <!-- Slide track -->
+        <div class="onboarding-track">
+            <!-- Slide 1: Welcome -->
+            <div class="onboarding-slide slide-1">
+                <div class="slide-icon">
+                    <img src="../../assets/usafeLogo.png" alt="USafe Logo">
+                </div>
+                <h1 class="slide-title">Welcome to USafe</h1>
+                <p class="slide-tagline">Safety Compliance Platform</p>
+                <p class="slide-description">Your all-in-one tool for managing safety inspections, audits, and compliance for outdoor promotional activities.</p>
+            </div>
+
+            <!-- Slide 2: Report & Inspect -->
+            <div class="onboarding-slide slide-2">
+                <div class="slide-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 11l3 3L22 4"></path>
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                    </svg>
+                </div>
+                <h1 class="slide-title">Report & Inspect</h1>
+                <p class="slide-description">Submit incident reports, hazard observations, and complete safety checklists across 8 reporting types -- all from your phone.</p>
+            </div>
+
+            <!-- Slide 3: Stay Compliant -->
+            <div class="onboarding-slide slide-3">
+                <div class="slide-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                </div>
+                <h1 class="slide-title">Stay Compliant</h1>
+                <p class="slide-description">Track your submissions, manage assigned tasks, and ensure your site stays compliant with safety standards.</p>
+            </div>
+        </div>
+
+        <!-- Bottom controls -->
+        <div class="onboarding-controls">
+            <div class="onboarding-dots">
+                <div class="onboarding-dot dot-1"></div>
+                <div class="onboarding-dot dot-2"></div>
+                <div class="onboarding-dot dot-3"></div>
+            </div>
+
+            <label for="slide2" class="nav-label nav-to-2">
+                Next
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </label>
+
+            <label for="slide3" class="nav-label nav-to-3">
+                Next
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </label>
+
+            <button class="nav-label nav-finish" onclick="completeOnboarding()">
+                Get Started
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function completeOnboarding() {
+            localStorage.setItem('usafe_onboarded', 'true');
+            window.location.href = '/Pages/reporting/reporting.html';
+        }
+    </script>
+</body>
+
+</html>

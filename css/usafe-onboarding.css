@@ -1,0 +1,258 @@
+/* ===== USafe Onboarding Walkthrough ===== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    background: #f5b700;
+}
+
+/* ===== CAROUSEL CONTAINER ===== */
+.onboarding-carousel {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+}
+
+.onboarding-track {
+    display: flex;
+    width: 300vw;
+    height: 100vh;
+    transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Radio-driven slide positions */
+input[name="slide"] {
+    display: none;
+}
+
+#slide1:checked ~ .onboarding-track { transform: translateX(0); }
+#slide2:checked ~ .onboarding-track { transform: translateX(-100vw); }
+#slide3:checked ~ .onboarding-track { transform: translateX(-200vw); }
+
+/* ===== INDIVIDUAL SLIDES ===== */
+.onboarding-slide {
+    width: 100vw;
+    height: 100vh;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 32px 140px;
+    text-align: center;
+    position: relative;
+}
+
+.slide-1 { background: #f5b700; }
+.slide-2 { background: #ffffff; }
+.slide-3 { background: #f5b700; }
+
+/* ===== SLIDE CONTENT ===== */
+.slide-icon {
+    width: 120px;
+    height: 120px;
+    border-radius: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 32px;
+    font-size: 48px;
+}
+
+.slide-1 .slide-icon {
+    background: transparent;
+}
+
+.slide-1 .slide-icon img {
+    width: 120px;
+    height: auto;
+    filter: drop-shadow(0 8px 24px rgba(0,0,0,0.15));
+}
+
+.slide-2 .slide-icon {
+    background: rgba(245, 183, 0, 0.12);
+    color: #c99200;
+}
+
+.slide-3 .slide-icon {
+    background: rgba(45, 45, 45, 0.1);
+    color: #2d2d2d;
+}
+
+.slide-title {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 12px;
+    line-height: 1.2;
+}
+
+.slide-1 .slide-title,
+.slide-3 .slide-title {
+    color: #2d2d2d;
+}
+
+.slide-2 .slide-title {
+    color: #2d2d2d;
+}
+
+.slide-tagline {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    opacity: 0.7;
+}
+
+.slide-1 .slide-tagline { color: #2d2d2d; }
+
+.slide-description {
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.6;
+    max-width: 300px;
+    opacity: 0.75;
+}
+
+.slide-1 .slide-description,
+.slide-3 .slide-description {
+    color: #2d2d2d;
+}
+
+.slide-2 .slide-description {
+    color: #555;
+}
+
+/* ===== SKIP BUTTON ===== */
+.onboarding-skip {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 100;
+    background: rgba(45, 45, 45, 0.1);
+    border: none;
+    border-radius: 20px;
+    padding: 8px 20px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: #2d2d2d;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.onboarding-skip:active {
+    background: rgba(45, 45, 45, 0.2);
+}
+
+/* Change skip color on slide 2 (white bg) */
+#slide2:checked ~ .onboarding-skip {
+    background: rgba(245, 183, 0, 0.15);
+    color: #2d2d2d;
+}
+
+/* ===== BOTTOM CONTROLS ===== */
+.onboarding-controls {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 24px 32px;
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 100;
+}
+
+/* ===== DOT INDICATORS ===== */
+.onboarding-dots {
+    display: flex;
+    gap: 8px;
+}
+
+.onboarding-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 4px;
+    background: rgba(45, 45, 45, 0.2);
+    transition: all 0.3s ease;
+}
+
+#slide1:checked ~ .onboarding-controls .dot-1,
+#slide2:checked ~ .onboarding-controls .dot-2,
+#slide3:checked ~ .onboarding-controls .dot-3 {
+    width: 24px;
+    background: #2d2d2d;
+}
+
+/* ===== NEXT / GET STARTED BUTTON ===== */
+.onboarding-next {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #2d2d2d;
+    color: #f5b700;
+    border: none;
+    border-radius: 16px;
+    padding: 14px 28px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+
+.onboarding-next:active {
+    transform: scale(0.97);
+}
+
+/* Label-based navigation buttons (hidden inputs drive transitions) */
+.nav-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #2d2d2d;
+    color: #f5b700;
+    border: none;
+    border-radius: 16px;
+    padding: 14px 28px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+
+.nav-label:active {
+    transform: scale(0.97);
+}
+
+/* Show/hide next buttons per slide */
+.nav-to-2, .nav-to-3, .nav-finish {
+    display: none;
+}
+
+#slide1:checked ~ .onboarding-controls .nav-to-2 { display: inline-flex; }
+#slide1:checked ~ .onboarding-controls .nav-to-3 { display: none; }
+#slide1:checked ~ .onboarding-controls .nav-finish { display: none; }
+
+#slide2:checked ~ .onboarding-controls .nav-to-2 { display: none; }
+#slide2:checked ~ .onboarding-controls .nav-to-3 { display: inline-flex; }
+#slide2:checked ~ .onboarding-controls .nav-finish { display: none; }
+
+#slide3:checked ~ .onboarding-controls .nav-to-2 { display: none; }
+#slide3:checked ~ .onboarding-controls .nav-to-3 { display: none; }
+#slide3:checked ~ .onboarding-controls .nav-finish { display: inline-flex; }
