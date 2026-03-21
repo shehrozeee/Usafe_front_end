@@ -70,6 +70,7 @@ const saveDraft = () => {
   try {
     const draft = collectDraftData();
     localStorage.setItem(_getDraftKey(), JSON.stringify(draft));
+    if (typeof showToast === 'function') showToast('Draft saved', 'success');
   } catch (e) {
     console.warn('Auto-save draft failed:', e);
   }
