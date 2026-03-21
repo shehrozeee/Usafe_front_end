@@ -5,8 +5,38 @@ on:
     branches: [feature/upl-checklists]
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Start local server
+        run: npx serve@latest . -l 3000 -s &
+
+      - name: Wait for server
+        run: sleep 2 && curl -sf http://127.0.0.1:3000 > /dev/null
+
+      - name: Run smoke tests
+        run: node tests/smoke-test.js --base-url http://127.0.0.1:3000
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-screenshots
+          path: tests/screenshots/
+
   deploy:
     runs-on: ubuntu-latest
+    needs: test
     steps:
       - uses: actions/checkout@v4
 

@@ -1,0 +1,9 @@
+{
+  "name": "usafe-mobile-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "node tests/smoke-test.js",
+    "test:ci": "node tests/smoke-test.js --base-url http://127.0.0.1:3000"
+  }
+}
