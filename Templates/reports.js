@@ -1,11 +1,18 @@
-const reports = (imageSrc, status, formName, assignedTo, date, entity, id) => {
-  const isPending = status.toLowerCase() === 'pending';
-  const statusColor = isPending ? '#b8860b' : '#16a34a';
-  const statusBg = isPending ? '#fff8e1' : '#dcfce7';
+const reports = (imageSrc, status, formName, assignedTo, date, entity, id, description) => {
+  const statusLower = status.toLowerCase();
+  let statusColor, statusBg;
+  if (statusLower === 'approved' || statusLower === 'completed') {
+    statusColor = '#16a34a'; statusBg = '#dcfce7';
+  } else if (statusLower === 'rejected') {
+    statusColor = '#dc2626'; statusBg = '#fee2e2';
+  } else {
+    statusColor = '#b8860b'; statusBg = '#fff8e1';
+  }
   const dateStr = new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  const descSnippet = description ? (description.length > 60 ? description.substring(0, 60) + '...' : description) : '';
 
   return `
-    <div class="report-card" onclick="NavigateToDetails('${entity}',${id})">
+    <div class="report-card" data-form-name="${formName}" data-status="${status}" onclick="NavigateToDetails('${entity}',${id})">
       <div class="report-card-top">
         <div class="report-card-info">
           <span class="report-card-type">${formName}</span>
@@ -13,6 +20,7 @@ const reports = (imageSrc, status, formName, assignedTo, date, entity, id) => {
         </div>
         <span class="report-card-status" style="background:${statusBg};color:${statusColor};">${status}</span>
       </div>
+      ${descSnippet ? `<div class="report-card-desc">${descSnippet}</div>` : ''}
       ${assignedTo && assignedTo !== 'N/A' ? `<div class="report-card-assigned">Assigned to: ${addStars(assignedTo)}</div>` : ''}
     </div>`;
 };
@@ -54,7 +62,7 @@ const fetchReports = () => {
     }
     let html = '';
     for (const iterator of data) {
-      html += reports(iterator.files ? JSON.parse(iterator.files)[0] : "", iterator.status, iterator.formName, iterator.assignedTo, iterator.createdDate, iterator.entity, iterator.id);
+      html += reports(iterator.files ? JSON.parse(iterator.files)[0] : "", iterator.status, iterator.formName, iterator.assignedTo, iterator.createdDate, iterator.entity, iterator.id, iterator.description || '');
     }
     $(".reports").html(html);
   });
