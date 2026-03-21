@@ -1,0 +1,490 @@
+/* ═══════════════════════════════════════════════════════════
+   USafe App — Consolidated Design System
+
+   Single source of truth for shared page-level styles.
+   Import AFTER usafe-global.css (which has the base tokens).
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Extended Spacing & Aliases ── */
+:root {
+    --safety-yellow: #f5b700;
+    --safety-yellow-dark: #e5a100;
+    --safety-yellow-light: #ffd54f;
+    --charcoal: #2d2d2d;
+    --charcoal-light: #3d3d3d;
+    --white: #ffffff;
+    --surface: #fafafa;
+    --text-dark: #1a1a1a;
+    --text-mid: #666666;
+    --text-light: #999999;
+    --border: #e8e8e8;
+    --radius: 16px;
+    --radius-sm: 12px;
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 32px;
+}
+
+/* ── Base Reset (light touch — usafe-global.css has the main one) ── */
+* { -webkit-tap-highlight-color: transparent; }
+
+body {
+    font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+    background: var(--surface);
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
+
+/* ═══════════════════════════════════════
+   TOP BAR — yellow fixed/sticky header
+   ═══════════════════════════════════════ */
+
+.usafe-topbar {
+    background-color: var(--safety-yellow);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.usafe-topbar img {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+}
+
+.usafe-topbar .topbar-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--charcoal);
+    margin: 0;
+}
+
+.usafe-topbar .topbar-back {
+    color: var(--charcoal);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+}
+
+.usafe-topbar .topbar-back:hover {
+    background: rgba(0,0,0,0.08);
+}
+
+/* Fixed header variant (reporting/tasks pages) */
+.usafe-topbar-fixed {
+    background: var(--safety-yellow);
+    padding: 0 20px;
+    font-weight: 800;
+    font-size: 22px;
+    color: var(--charcoal);
+    position: fixed;
+    width: 100%;
+    top: 0;
+    z-index: 100;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    letter-spacing: -0.3px;
+}
+
+.usafe-topbar-fixed::after {
+    content: '';
+    position: absolute;
+    bottom: -16px;
+    left: 0;
+    right: 0;
+    height: 16px;
+    background: var(--surface);
+    border-radius: 16px 16px 0 0;
+}
+
+
+/* ═══════════════════════════════════════
+   CONTENT AREA — padded below header
+   ═══════════════════════════════════════ */
+
+.usafe-content-area {
+    padding: 20px var(--space-md);
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.usafe-content-area--wide {
+    max-width: 540px;
+}
+
+.usafe-page-subtitle {
+    font-size: 14px;
+    font-weight: 500;
+    color: #888;
+    margin-bottom: var(--space-md);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Hide old JS-rendered headers */
+.usafe-hide-old-header #header { display: none; }
+
+
+/* ═══════════════════════════════════════
+   BOTTOM NAV OVERRIDES
+   Consistent with bottomNav.js rendering
+   ═══════════════════════════════════════ */
+
+.usafe-bottom-nav,
+.usafe-bnav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--white);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
+    z-index: 500;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.nav-tab,
+.usafe-bnav-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    color: #aaa;
+    font-size: 11px;
+    font-weight: 600;
+    gap: 3px;
+    padding: 6px 14px;
+    border-radius: var(--radius-sm);
+    transition: color 0.2s, background 0.2s;
+}
+
+.nav-tab i,
+.usafe-bnav-tab i {
+    font-size: 20px;
+}
+
+.nav-tab.active,
+.usafe-bnav-tab.active {
+    color: var(--safety-yellow);
+    background: rgba(245, 183, 0, 0.08);
+}
+
+.nav-tab:hover,
+.usafe-bnav-tab:hover {
+    text-decoration: none;
+    color: var(--safety-yellow-dark);
+}
+
+/* Old dark bottom nav — force hide when bottomNav.js is loaded */
+.taskBar, .taskBarContainer { display: none !important; }
+
+
+/* ═══════════════════════════════════════
+   FAB — Floating Action Button
+   ═══════════════════════════════════════ */
+
+.usafe-fab,
+.float {
+    position: fixed;
+    width: 56px;
+    height: 56px;
+    bottom: 88px;
+    right: 20px;
+    background: var(--charcoal);
+    color: var(--safety-yellow);
+    border-radius: var(--radius);
+    text-align: center;
+    box-shadow: 0 6px 20px rgba(45,45,45,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: transform 0.15s, box-shadow 0.15s;
+    z-index: 80;
+    border: none;
+    cursor: pointer;
+}
+
+.usafe-fab:hover,
+.float:hover {
+    color: var(--safety-yellow);
+    text-decoration: none;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(45,45,45,0.4);
+}
+
+.usafe-fab:active,
+.float:active {
+    transform: scale(0.94);
+}
+
+.usafe-fab i,
+.my-float {
+    font-size: 20px;
+    margin: 0;
+    line-height: 1;
+}
+
+
+/* ═══════════════════════════════════════
+   REFRESH BUTTON (header action)
+   ═══════════════════════════════════════ */
+
+.usafe-refresh-btn,
+.refresh-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--charcoal);
+    color: var(--safety-yellow);
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 8px 16px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.12s, box-shadow 0.2s;
+    box-shadow: 0 2px 8px rgba(45,45,45,0.15);
+}
+
+.usafe-refresh-btn:active,
+.refresh-btn:active {
+    transform: scale(0.96);
+}
+
+.usafe-refresh-btn i,
+.refresh-btn i {
+    font-size: 13px;
+}
+
+
+/* ═══════════════════════════════════════
+   PAGE TRANSITION — fade + slide-up
+   ═══════════════════════════════════════ */
+
+.usafe-page-content {
+    animation: usafe-page-in 0.25s ease-out;
+}
+
+@keyframes usafe-page-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+
+/* ═══════════════════════════════════════
+   EMPTY STATES
+   ═══════════════════════════════════════ */
+
+.usafe-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    text-align: center;
+}
+
+.usafe-empty-state svg {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 16px;
+    opacity: 0.35;
+}
+
+.usafe-empty-state h3 {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin: 0 0 6px;
+}
+
+.usafe-empty-state p {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-light);
+    margin: 0 0 20px;
+    line-height: 1.4;
+}
+
+.usafe-empty-state .usafe-empty-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--charcoal);
+    color: var(--safety-yellow);
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 12px 24px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    transition: transform 0.12s;
+    box-shadow: 0 4px 12px rgba(45,45,45,0.2);
+}
+
+.usafe-empty-cta:hover {
+    color: var(--safety-yellow);
+    text-decoration: none;
+}
+
+.usafe-empty-cta:active {
+    transform: scale(0.96);
+}
+
+
+/* ═══════════════════════════════════════
+   MICRO-INTERACTIONS
+   ═══════════════════════════════════════ */
+
+.usafe-pressable:active {
+    transform: scale(0.97);
+}
+
+.usafe-focus-ring:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(245, 183, 0, 0.25);
+}
+
+/* Generic card press feedback */
+.report-card:active,
+.TaskContainer:active {
+    transform: scale(0.985);
+}
+
+
+/* ═══════════════════════════════════════
+   CARD LIST STYLES (shared)
+   ═══════════════════════════════════════ */
+
+.usafe-type-card .card {
+    background: var(--white);
+    border: none;
+    border-radius: var(--radius);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    margin-bottom: 14px;
+    overflow: hidden;
+    position: relative;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.usafe-type-card .card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    background: var(--safety-yellow);
+    border-radius: 16px 0 0 16px;
+}
+
+.usafe-type-card .card:active {
+    transform: scale(0.98);
+    box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+}
+
+.usafe-type-card .card-body {
+    padding: 0 !important;
+}
+
+.usafe-type-card .card .row {
+    margin: 0;
+}
+
+.usafe-type-card .card .btn-link {
+    color: var(--charcoal);
+    text-decoration: none;
+    width: 100%;
+    padding: 0;
+}
+
+.usafe-type-card .card .btn-link:hover,
+.usafe-type-card .card .btn-link:focus {
+    text-decoration: none;
+    color: var(--charcoal);
+}
+
+.usafe-type-card .card .btn-link > div {
+    padding: 18px 20px 18px 24px !important;
+}
+
+.usafe-type-card .card .card-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--charcoal);
+    margin: 0;
+    line-height: 1.4;
+}
+
+.usafe-type-card .card .fa-chevron-circle-right {
+    color: var(--safety-yellow);
+    font-size: 20px;
+}
+
+
+/* ═══════════════════════════════════════
+   MODAL STYLES (shared)
+   ═══════════════════════════════════════ */
+
+.usafe-modal .modal-content {
+    border: none;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}
+
+.usafe-modal .modal-header {
+    background: var(--safety-yellow);
+    border-bottom: none;
+    padding: 20px 24px;
+}
+
+.usafe-modal .modal-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 800;
+    font-size: 18px;
+    color: var(--charcoal);
+}
+
+.usafe-modal .modal-header .close {
+    color: var(--charcoal);
+    opacity: 0.6;
+}
+
+.usafe-modal .modal-body {
+    padding: 24px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.usafe-modal .modal-footer {
+    border-top: 1px solid var(--border);
+    padding: 16px 24px;
+    gap: 8px;
+}

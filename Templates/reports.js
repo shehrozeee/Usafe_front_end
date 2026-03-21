@@ -23,7 +23,23 @@ const fetchReports = () => {
   sendRequest("api/ChangeForm/fetchReports?userName=" + username, "GET", {}, (data) => {
     reportCountCaller(data.length);
     if (!data.length) {
-      $(".reports").html('<p style="text-align:center;color:#aaa;padding:40px 0;font-size:14px;">No reports yet. Tap + to create one.</p>');
+      $(".reports").html(`
+        <div class="usafe-empty-state">
+          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="12" y="6" width="40" height="52" rx="4" stroke="#2d2d2d" stroke-width="2.5" fill="none"/>
+            <line x1="22" y1="20" x2="42" y2="20" stroke="#2d2d2d" stroke-width="2" stroke-linecap="round"/>
+            <line x1="22" y1="28" x2="38" y2="28" stroke="#2d2d2d" stroke-width="2" stroke-linecap="round"/>
+            <line x1="22" y1="36" x2="34" y2="36" stroke="#2d2d2d" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="46" cy="46" r="12" fill="#f5b700" stroke="#2d2d2d" stroke-width="2"/>
+            <line x1="42" y1="46" x2="50" y2="46" stroke="#2d2d2d" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="46" y1="42" x2="46" y2="50" stroke="#2d2d2d" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+          <h3>No reports yet</h3>
+          <p>Your submitted reports will appear here.</p>
+          <a href="/Pages/reportingType.html" class="usafe-empty-cta">
+            <i class="fa fa-plus"></i> Create Report
+          </a>
+        </div>`);
       return;
     }
     let html = '';

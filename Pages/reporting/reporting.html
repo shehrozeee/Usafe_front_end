@@ -26,35 +26,14 @@
   <link rel="stylesheet" href="../../css/floatBtn.css">
   <link rel="stylesheet" href="../../css/taskBar.css">
   <link rel="stylesheet" href="../../css/loader.css">
+  <link rel="stylesheet" href="../../css/usafe-app.css">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.all.min.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../css/usafe-swal.css">
   <style>
-    :root {
-      --safety-yellow: #f5b700;
-      --safety-yellow-dark: #e5a100;
-      --safety-yellow-light: #ffd54f;
-      --charcoal: #2d2d2d;
-      --charcoal-light: #3d3d3d;
-      --white: #ffffff;
-      --surface: #fafafa;
-      --text-dark: #1a1a1a;
-      --text-mid: #666666;
-      --text-light: #999999;
-      --border: #e8e8e8;
-      --radius: 16px;
-    }
+    /* ===== PAGE-SPECIFIC: Reporting ===== */
 
-    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-    body {
-      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-      background: var(--surface);
-      min-height: 100vh;
-      min-height: 100dvh;
-    }
-
-    /* ===== HEADER ===== */
+    /* Header uses shared .usafe-topbar-fixed via usafe-app.css */
     .RepHeader {
       background: var(--safety-yellow);
       padding: 0 20px;
@@ -83,40 +62,14 @@
       border-radius: 16px 16px 0 0;
     }
 
-    .refresh-btn {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      background: var(--charcoal);
-      color: var(--safety-yellow);
-      border: none;
-      border-radius: 12px;
-      padding: 8px 16px;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 13px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: transform 0.12s, box-shadow 0.2s;
-      box-shadow: 0 2px 8px rgba(45,45,45,0.15);
-    }
-
-    .refresh-btn:active {
-      transform: scale(0.96);
-    }
-
-    .refresh-btn i {
-      font-size: 13px;
-    }
-
     /* ===== REPORT COUNT ===== */
     .reportCount {
       position: relative;
       padding: 12px 16px 4px;
-      margin-top: 64px; /* clear fixed header */
+      margin-top: 64px;
       background: var(--surface);
     }
 
-    /* Override the JS-rendered report count component */
     .ReportCountContainer {
       display: flex !important;
       justify-content: center !important;
@@ -132,34 +85,13 @@
       top: auto !important;
     }
 
-    .ReportCountContainer table {
-      margin: 0 !important;
-      width: 100%;
-    }
-
-    .ReportCountContainer td {
-      font-family: 'Plus Jakarta Sans', sans-serif !important;
-      padding: 4px 8px !important;
-    }
-
-    .ReportCountContainer tr:first-child td {
-      font-size: 28px !important;
-      font-weight: 800 !important;
-      color: var(--charcoal) !important;
-    }
-
-    .ReportCountContainer tr:last-child td {
-      font-size: 12px !important;
-      font-weight: 600 !important;
-      color: var(--text-mid) !important;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
+    .ReportCountContainer table { margin: 0 !important; width: 100%; }
+    .ReportCountContainer td { font-family: 'Plus Jakarta Sans', sans-serif !important; padding: 4px 8px !important; }
+    .ReportCountContainer tr:first-child td { font-size: 28px !important; font-weight: 800 !important; color: var(--charcoal) !important; }
+    .ReportCountContainer tr:last-child td { font-size: 12px !important; font-weight: 600 !important; color: var(--text-mid) !important; text-transform: uppercase; letter-spacing: 0.5px; }
 
     /* ===== REPORT CARDS ===== */
-    .reporting {
-      background: var(--surface);
-    }
+    .reporting { background: var(--surface); }
 
     .RepContentContainer {
       display: flex;
@@ -172,12 +104,8 @@
       padding: 8px 0;
     }
 
-    .RepContent {
-      width: 100%;
-      max-width: 500px;
-    }
+    .RepContent { width: 100%; max-width: 500px; }
 
-    /* ===== Report Cards (new) ===== */
     .report-card {
       background: var(--white);
       border-radius: 14px;
@@ -189,186 +117,26 @@
       border-left: 4px solid var(--safety-yellow);
     }
 
-    .report-card:active {
-      transform: scale(0.98);
-    }
+    .report-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .report-card-info { flex: 1; min-width: 0; }
+    .report-card-type { display: block; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 700; color: var(--text-dark); line-height: 1.3; }
+    .report-card-date { display: block; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; color: var(--text-mid); margin-top: 3px; }
+    .report-card-status { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 10px; white-space: nowrap; flex-shrink: 0; }
+    .report-card-assigned { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; color: var(--text-mid); margin-top: 6px; }
 
-    .report-card-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 10px;
-    }
-
-    .report-card-info {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .report-card-type {
-      display: block;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--text-dark);
-      line-height: 1.3;
-    }
-
-    .report-card-date {
-      display: block;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 12px;
-      color: var(--text-mid);
-      margin-top: 3px;
-    }
-
-    .report-card-status {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 3px 10px;
-      border-radius: 10px;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-
-    .report-card-assigned {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 12px;
-      color: var(--text-mid);
-      margin-top: 6px;
-    }
-
-    /* Hide old report styles if any remnants */
     .ReportContainer { display: none !important; }
-
-    /* ===== FAB ===== */
-    .float {
-      position: fixed;
-      width: 56px;
-      height: 56px;
-      bottom: 88px;
-      right: 20px;
-      background: var(--charcoal);
-      color: var(--safety-yellow);
-      border-radius: 16px;
-      text-align: center;
-      box-shadow: 0 6px 20px rgba(45,45,45,0.3);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-decoration: none;
-      transition: transform 0.15s, box-shadow 0.15s;
-      z-index: 80;
-    }
-
-    .float:hover {
-      color: var(--safety-yellow);
-      text-decoration: none;
-      transform: translateY(-2px);
-      box-shadow: 0 8px 28px rgba(45,45,45,0.4);
-    }
-
-    .float:active {
-      transform: scale(0.94);
-    }
-
-    .my-float {
-      font-size: 20px;
-      margin: 0;
-      line-height: 1;
-    }
-
-    /* ===== BOTTOM NAV ===== */
-    .taskBarContainer {
-      background: var(--charcoal);
-      display: flex;
-      justify-content: center;
-      position: fixed;
-      width: 100%;
-      bottom: 0;
-      padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
-      z-index: 100;
-      border-radius: 20px 20px 0 0;
-      box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
-    }
-
-    .taskIconContainer {
-      width: 100%;
-      max-width: 400px;
-      display: flex;
-      justify-content: space-around;
-    }
-
-    .taskIcons {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      cursor: pointer;
-    }
-
-    .taskIcons a {
-      color: var(--text-light);
-      text-decoration: none;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 11px;
-      font-weight: 600;
-      gap: 2px;
-      transition: color 0.2s;
-    }
-
-    .faIcon {
-      font-size: 20px;
-      padding: 4px 0;
-      color: #888;
-      transition: color 0.2s;
-    }
-
-    .faIcon.active {
-      color: var(--safety-yellow) !important;
-    }
-
-    .faIcon.active + br,
-    .taskIcons a:has(.faIcon.active) {
-      color: var(--safety-yellow);
-    }
-
-    /* ===== EMPTY STATE ===== */
-    .reports:empty::after {
-      content: 'No reports yet. Tap + to create one.';
-      display: block;
-      text-align: center;
-      padding: 60px 20px;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--text-light);
-    }
-
-    /* ===== LOADER ===== */
-    #load {
-      width: 100%;
-      height: 100%;
-      position: fixed;
-      z-index: 9999;
-      background: url("../../assets/Dual Ring-1s-200px.gif") no-repeat center center rgba(250,250,250,0.85);
-    }
   </style>
 </head>
 
 <body>
-  <span id="load"></span>
+  <div id="load"></div>
   <div class='RepHeader'>
     My Reports
     <button class="refresh-btn" onclick="fetchReports()">
       <i class="fa fa-refresh"></i> Refresh
     </button>
   </div>
-  <div class="reporting">
+  <div class="reporting usafe-page-content">
     <div class="reportCount"></div>
 
     <div class='RepContentContainer'>
@@ -390,7 +158,6 @@
   <script src="../../Components/floatBtn/index.js"></script>
   <script src="../../Components/taskBar/index.js"></script>
   <script src="../../Components/bottomNav/bottomNav.js"></script>
-  <style>.taskBar, .taskBarContainer { display: none !important; }</style>
   <script>
     //create an on focus event and onfocus call fetchReport Function
     document.onreadystatechange = function () {

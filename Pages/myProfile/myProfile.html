@@ -26,31 +26,10 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.all.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../css/usafe-swal.css">
+    <link rel="stylesheet" href="../../css/usafe-app.css">
 
     <style>
-        :root {
-            --safety-yellow: #f5b700;
-            --safety-yellow-dark: #e5a100;
-            --safety-yellow-light: #ffd54f;
-            --charcoal: #2d2d2d;
-            --charcoal-light: #3d3d3d;
-            --white: #ffffff;
-            --surface: #fafafa;
-            --text-dark: #1a1a1a;
-            --text-mid: #666666;
-            --text-light: #999999;
-            --border: #e8e8e8;
-            --radius: 16px;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-        body {
-            font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-            background: var(--surface);
-            min-height: 100vh;
-            min-height: 100dvh;
-        }
+        /* ===== PAGE-SPECIFIC: My Profile ===== */
 
         /* ===== HERO SECTION ===== */
         .profile-hero {
@@ -329,63 +308,6 @@
             box-shadow: 0 4px 12px rgba(45,45,45,0.2);
         }
 
-        /* ===== BOTTOM NAV ===== */
-        .taskBarContainer {
-            background: var(--charcoal);
-            display: flex;
-            justify-content: center;
-            position: fixed;
-            width: 100%;
-            bottom: 0;
-            padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
-            z-index: 100;
-            border-radius: 20px 20px 0 0;
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
-        }
-
-        .taskIconContainer {
-            width: 100%;
-            max-width: 400px;
-            display: flex;
-            justify-content: space-around;
-        }
-
-        .taskIcons {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            cursor: pointer;
-        }
-
-        .taskIcons a {
-            color: var(--text-light);
-            text-decoration: none;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 11px;
-            font-weight: 600;
-            gap: 2px;
-            transition: color 0.2s;
-        }
-
-        .faIcon {
-            font-size: 20px;
-            padding: 4px 0;
-            color: #888;
-            transition: color 0.2s;
-        }
-
-        .faIcon.active {
-            color: var(--safety-yellow) !important;
-        }
-
-        .taskIcons a:has(.faIcon.active) {
-            color: var(--safety-yellow);
-        }
-
         /* ===== FOOTER ===== */
         .profile-footer {
             text-align: center;
@@ -435,7 +357,7 @@
     </div>
 
     <!-- NEW PROFILE UI -->
-    <div class="profile-hero">
+    <div class="profile-hero usafe-page-content">
         <div class="profile-hero-inner">
             <div class="profile-avatar">
                 <i class="fa fa-user" aria-hidden="true"></i>
@@ -567,7 +489,6 @@
     <div class="taskBar"></div>
     <script src="../../Components/taskBar/index.js"></script>
     <script src="../../Components/bottomNav/bottomNav.js"></script>
-    <style>.taskBar, .taskBarContainer { display: none !important; }</style>
     <script src="../../Js/LanguageSelection.js"></script>
     <script>
         const togglebutton = document.querySelector('.logo');

@@ -28,37 +28,16 @@
     <link rel="stylesheet" href="../../css/header.css">
     <link rel="stylesheet" href="../../css/loader.css">
     <link rel="stylesheet" href="../../css/usafe-global.css">
+    <link rel="stylesheet" href="../../css/usafe-app.css">
     <script src="../../Templates/Header.js"></script>
     <script src="../../Js/Authentication/CheckUser.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.all.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../css/usafe-swal.css">
     <style>
-        :root {
-            --safety-yellow: #f5b700;
-            --safety-yellow-dark: #e5a100;
-            --safety-yellow-light: #ffd54f;
-            --charcoal: #2d2d2d;
-            --charcoal-light: #3d3d3d;
-            --white: #ffffff;
-            --surface: #fafafa;
-            --text-dark: #1a1a1a;
-            --text-mid: #666666;
-            --text-light: #999999;
-            --border: #e8e8e8;
-            --radius: 16px;
-        }
+        /* ===== PAGE-SPECIFIC: Task Page ===== */
 
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-        body {
-            font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-            background: var(--surface);
-            min-height: 100vh;
-            min-height: 100dvh;
-        }
-
-        /* ===== HEADER ===== */
+        /* Header */
         .task-page-header {
             background: var(--safety-yellow);
             padding: 0 20px;
@@ -86,7 +65,6 @@
             border-radius: 16px 16px 0 0;
         }
 
-        /* Hide the old JS-rendered header */
         #header { display: none; }
 
         /* ===== TASK CARDS ===== */
@@ -101,10 +79,7 @@
             padding: 0 16px;
         }
 
-        .TaskContent {
-            width: 100%;
-            max-width: 500px;
-        }
+        .TaskContent { width: 100%; max-width: 500px; }
 
         .TaskContainer {
             background: var(--white) !important;
@@ -117,285 +92,41 @@
             transition: transform 0.15s, box-shadow 0.15s;
         }
 
-        .TaskContainer:active {
-            transform: scale(0.985);
-        }
+        .TaskContainer .ReportContent { display: flex; padding: 16px; gap: 8px; }
+        .TaskHeadings { width: auto !important; min-width: 90px; margin-left: 0 !important; }
+        .TaskHeadings p, .ReportDescriptions p { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; margin: 0; padding: 3px 0 !important; line-height: 1.4; }
+        .TaskHeadings p { font-weight: 700; color: var(--text-mid); }
+        .ReportDescriptions p { font-weight: 600; color: var(--text-dark); }
+        .ReportBorder { height: 1px !important; background: var(--border) !important; width: 92% !important; margin: 0 auto; }
 
-        .TaskContainer .ReportContent {
-            display: flex;
-            padding: 16px;
-            gap: 8px;
-        }
-
-        .TaskHeadings {
-            width: auto !important;
-            min-width: 90px;
-            margin-left: 0 !important;
-        }
-
-        .TaskHeadings p,
-        .ReportDescriptions p {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 13px;
-            margin: 0;
-            padding: 3px 0 !important;
-            line-height: 1.4;
-        }
-
-        .TaskHeadings p {
-            font-weight: 700;
-            color: var(--text-mid);
-        }
-
-        .ReportDescriptions p {
-            font-weight: 600;
-            color: var(--text-dark);
-        }
-
-        .ReportBorder {
-            height: 1px !important;
-            background: var(--border) !important;
-            width: 92% !important;
-            margin: 0 auto;
-        }
-
-        .TaskBtn {
-            display: flex;
-            gap: 0;
-        }
-
-        .TaskBtn .ReportButton {
-            flex: 1;
-            background: var(--white) !important;
-            border: none !important;
-            padding: 14px 8px !important;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 0.8px;
-            color: var(--charcoal);
-            cursor: pointer;
-            transition: background 0.2s, color 0.2s;
-            margin: 0 !important;
-            width: 50% !important;
-        }
-
-        .TaskBtn .ReportButton:first-child {
-            color: var(--safety-yellow-dark);
-            border-right: 1px solid var(--border) !important;
-        }
-
-        .TaskBtn .ReportButton:last-child {
-            background: var(--charcoal) !important;
-            color: var(--safety-yellow) !important;
-        }
-
-        .TaskBtn .ReportButton:active {
-            opacity: 0.8;
-        }
-
-        /* ===== FAB ===== */
-        .float {
-            position: fixed;
-            width: 56px;
-            height: 56px;
-            bottom: 88px;
-            right: 20px;
-            background: var(--charcoal);
-            color: var(--safety-yellow);
-            border-radius: 16px;
-            text-align: center;
-            box-shadow: 0 6px 20px rgba(45,45,45,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
-            transition: transform 0.15s, box-shadow 0.15s;
-            z-index: 80;
-        }
-
-        .float:hover {
-            color: var(--safety-yellow);
-            text-decoration: none;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 28px rgba(45,45,45,0.4);
-        }
-
-        .float:active {
-            transform: scale(0.94);
-        }
-
-        .my-float {
-            font-size: 20px;
-            margin: 0;
-            line-height: 1;
-        }
-
-        /* ===== BOTTOM NAV ===== */
-        .taskBarContainer {
-            background: var(--charcoal);
-            display: flex;
-            justify-content: center;
-            position: fixed;
-            width: 100%;
-            bottom: 0;
-            padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
-            z-index: 100;
-            border-radius: 20px 20px 0 0;
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
-        }
-
-        .taskIconContainer {
-            width: 100%;
-            max-width: 400px;
-            display: flex;
-            justify-content: space-around;
-        }
-
-        .taskIcons {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            cursor: pointer;
-        }
-
-        .taskIcons a {
-            color: var(--text-light);
-            text-decoration: none;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 11px;
-            font-weight: 600;
-            gap: 2px;
-            transition: color 0.2s;
-        }
-
-        .faIcon {
-            font-size: 20px;
-            padding: 4px 0;
-            color: #888;
-            transition: color 0.2s;
-        }
-
-        .faIcon.active {
-            color: var(--safety-yellow) !important;
-        }
-
-        .taskIcons a:has(.faIcon.active) {
-            color: var(--safety-yellow);
-        }
+        .TaskBtn { display: flex; gap: 0; }
+        .TaskBtn .ReportButton { flex: 1; background: var(--white) !important; border: none !important; padding: 14px 8px !important; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.8px; color: var(--charcoal); cursor: pointer; transition: background 0.2s, color 0.2s; margin: 0 !important; width: 50% !important; }
+        .TaskBtn .ReportButton:first-child { color: var(--safety-yellow-dark); border-right: 1px solid var(--border) !important; }
+        .TaskBtn .ReportButton:last-child { background: var(--charcoal) !important; color: var(--safety-yellow) !important; }
+        .TaskBtn .ReportButton:active { opacity: 0.8; }
 
         /* ===== MODAL ===== */
-        .modal-content {
-            border: none;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-        }
-
-        .modal-header {
-            background: var(--safety-yellow);
-            border-bottom: none;
-            padding: 20px 24px;
-        }
-
-        .modal-title {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-weight: 800;
-            font-size: 18px;
-            color: var(--charcoal);
-        }
-
-        .modal-header .close {
-            color: var(--charcoal);
-            opacity: 0.6;
-            font-size: 24px;
-        }
-
-        .modal-body {
-            padding: 24px;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-        }
-
-        .modal-body input[type="radio"] {
-            accent-color: var(--safety-yellow);
-            width: 18px;
-            height: 18px;
-            margin-right: 8px;
-            vertical-align: middle;
-        }
-
-        .modal-body label {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 15px;
-            font-weight: 600;
-            color: var(--text-dark);
-            vertical-align: middle;
-        }
-
-        .modal-footer {
-            border-top: 1px solid var(--border);
-            padding: 16px 24px;
-            gap: 8px;
-        }
-
-        .modal-footer .btn-danger {
-            background: var(--surface) !important;
-            color: var(--text-mid) !important;
-            border: none !important;
-            border-radius: 12px !important;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-weight: 600;
-            font-size: 14px;
-            padding: 10px 24px;
-        }
-
-        .modal-footer .btn-primary {
-            background: var(--charcoal) !important;
-            color: var(--safety-yellow) !important;
-            border: none !important;
-            border-radius: 12px !important;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-weight: 700;
-            font-size: 14px;
-            padding: 10px 24px;
-            box-shadow: 0 4px 12px rgba(45,45,45,0.2);
-        }
-
-        /* ===== EMPTY STATE ===== */
-        .tasks:empty::after {
-            content: 'No tasks assigned yet.';
-            display: block;
-            text-align: center;
-            padding: 60px 20px;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 15px;
-            font-weight: 600;
-            color: var(--text-light);
-        }
-
-        /* ===== LOADER ===== */
-        #load {
-            width: 100%;
-            height: 100%;
-            position: fixed;
-            z-index: 9999;
-            background: url("../../assets/Dual Ring-1s-200px.gif") no-repeat center center rgba(250,250,250,0.85);
-        }
+        .modal-content { border: none; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+        .modal-header { background: var(--safety-yellow); border-bottom: none; padding: 20px 24px; }
+        .modal-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 18px; color: var(--charcoal); }
+        .modal-header .close { color: var(--charcoal); opacity: 0.6; font-size: 24px; }
+        .modal-body { padding: 24px; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .modal-body input[type="radio"] { accent-color: var(--safety-yellow); width: 18px; height: 18px; margin-right: 8px; vertical-align: middle; }
+        .modal-body label { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 600; color: var(--text-dark); vertical-align: middle; }
+        .modal-footer { border-top: 1px solid var(--border); padding: 16px 24px; gap: 8px; }
+        .modal-footer .btn-danger { background: var(--surface) !important; color: var(--text-mid) !important; border: none !important; border-radius: 12px !important; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 14px; padding: 10px 24px; }
+        .modal-footer .btn-primary { background: var(--charcoal) !important; color: var(--safety-yellow) !important; border: none !important; border-radius: 12px !important; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 14px; padding: 10px 24px; box-shadow: 0 4px 12px rgba(45,45,45,0.2); }
     </style>
 </head>
 
 <body>
-    <span id="load"></span>
+    <div id="load"></div>
 
     <div class="task-page-header">My Tasks</div>
 
     <div id="header"></div>
 
-    <div class='TaskContentContainer'>
+    <div class='TaskContentContainer usafe-page-content'>
         <div class='TaskContent'>
             <div class="tasks"></div>
         </div>
@@ -437,7 +168,6 @@
     <script src="../../Components/reportCount/repCount.js"></script>
     <script src="../../Components/taskBar/index.js"></script>
     <script src="../../Components/bottomNav/bottomNav.js"></script>
-    <style>.taskBar, .taskBarContainer { display: none !important; }</style>
 
     <script src="../../Global/URLS.js"></script>
     <script src="../../Helpers/HttpHandler.js"></script>
