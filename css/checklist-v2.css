@@ -279,6 +279,61 @@ body {
 
 
 /* ═══════════════════════════════════════
+   RATING BUTTONS
+   ═══════════════════════════════════════ */
+
+.rating-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: 8px 0;
+}
+
+.rating-label {
+  cursor: pointer;
+}
+
+.rating-label input {
+  display: none;
+}
+
+.rating-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid #ddd;
+  background: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  color: #888;
+  transition: all 0.15s ease;
+}
+
+.rating-btn:active {
+  transform: scale(0.95);
+}
+
+.rating-label input:checked + .rating-btn {
+  background: var(--yellow);
+  border-color: var(--yellow);
+  color: var(--dark);
+  box-shadow: 0 2px 8px rgba(245, 183, 0, 0.3);
+}
+
+.rating-scale-labels {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 4px;
+  font-size: 11px;
+  color: #aaa;
+  font-weight: 500;
+}
+
+
+/* ═══════════════════════════════════════
    APPLICABILITY BADGES
    ═══════════════════════════════════════ */
 

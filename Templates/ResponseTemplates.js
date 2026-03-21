@@ -121,3 +121,25 @@ const acknowledgedTemplate = (questionId) => `
       </label>
     </div>
   </div>`;
+
+const ratingTemplate = (questionId) => `
+  <div class="response-group response-rating">
+    <div class="form-group">
+      <div class="rating-buttons" id="ratingGroup${questionId}">
+        ${[1,2,3,4,5].map(n => `
+          <label class="rating-label">
+            <input type="radio" name="Response${questionId}" value="${n}" />
+            <span class="rating-btn">${n}</span>
+          </label>
+        `).join('')}
+      </div>
+      <div class="rating-scale-labels">
+        <span>Poor</span>
+        <span>Excellent</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Remarks</label>
+      <textarea id="remarks${questionId}" class="form-control" rows="2" placeholder="Optional remarks..."></textarea>
+    </div>
+  </div>`;

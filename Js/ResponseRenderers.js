@@ -18,6 +18,8 @@ const renderResponseInput = (question, questionId) => {
       return dateTemplate(questionId);
     case 'acknowledged':
       return acknowledgedTemplate(questionId);
+    case 'rating':
+      return ratingTemplate(questionId);
     default:
       return complianceTemplate(questionId);
   }
@@ -87,6 +89,17 @@ const collectResponseValue = (responseType, questionId) => {
         responsibility: ''
       };
     }
+    case 'rating': {
+      const selected = document.querySelector(`input[name="Response${questionId}"]:checked`);
+      return {
+        responseValue: selected ? selected.value : '',
+        compliance: selected ? selected.value : '',
+        status: '',
+        actions: '',
+        responsibility: '',
+        remarks: document.getElementById(`remarks${questionId}`)?.value || ''
+      };
+    }
     default:
       return { responseValue: '', compliance: '', status: '', actions: '', responsibility: '' };
   }
@@ -140,6 +153,10 @@ const validateQuestionResponse = (responseType, questionId) => {
       }
       return true;
     }
+    case 'rating': {
+      const selected = document.querySelector(`input[name="Response${questionId}"]:checked`);
+      return !!selected;
+    }
     default:
       return true;
   }
@@ -162,6 +179,11 @@ const getResponseSummary = (responseType, values) => {
       return `<span class="result-value text-info">${values.responseValue || '—'}</span>`;
     case 'acknowledged':
       return `<span class="result-value ${values.responseValue === 'Acknowledged' ? 'text-success' : 'text-danger'}">${values.responseValue}</span>`;
+    case 'rating': {
+      const val = parseInt(values.responseValue) || 0;
+      const color = val >= 4 ? 'text-success' : val >= 3 ? 'text-warning' : 'text-danger';
+      return `<span class="result-value ${color}">${val}/5</span>`;
+    }
     default:
       return values.responseValue || '';
   }
