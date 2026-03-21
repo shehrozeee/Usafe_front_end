@@ -2,41 +2,49 @@
     {
         "heading": "Safe / Unsafe Acts",
         "href": "/Pages/IncidentReporting/SafeUnsafeActs.html",
-        "urdu": "محفوظ/غیر محفوظ اعمل"
+        "urdu": "محفوظ/غیر محفوظ اعمل",
+        "description": "Report safe or unsafe behaviors observed on site"
     },
     {
         "heading": "Hazard Reporting",
         "href": "/Pages/IncidentReporting/HazardReporting.html",
-        "urdu":"خطرے کی اطلاع"
+        "urdu":"خطرے کی اطلاع",
+        "description": "Flag potential workplace hazards for resolution"
     },
     {
         "heading": "Incident Reporting",
         "href": "/Pages/IncidentReporting/IncidentReporting.html",
-        "urdu": "واقعہ کی اطلاع"
+        "urdu": "واقعہ کی اطلاع",
+        "description": "Document workplace incidents and near-misses"
     },
     {
         "heading": "Environmental Incident Reporting",
         "href": "/Pages/EnvironmentalChanges.html",
-        "urdu": "ماحولیاتی واقعہ رپورٹنگ"
+        "urdu": "ماحولیاتی واقعہ رپورٹنگ",
+        "description": "Report environmental safety concerns"
     },
     {
         "heading": "Deep Compliance Audit",
         "href": "/Pages/checklistType.html",
-        "urdu": "ڈیپ کمپلائنس اڈٹ"
+        "urdu": "ڈیپ کمپلائنس اڈٹ",
+        "description": "Detailed compliance inspection audit"
     },
     {
         "heading": "Planned Inspection",
         "href": "/Pages/checklistType.html",
-        "urdu": "پلانڈ انسپیکشن"
+        "urdu": "پلانڈ انسپیکشن",
+        "description": "Scheduled safety inspection checklist"
     },
     {
         "heading": "Safety Action Meeting (SAM)",
         "href": "/Pages/IncidentReporting/SafetyAction.html",
-        "urdu": "سیفٹی ایکشن میٹنگ"
+        "urdu": "سیفٹی ایکشن میٹنگ",
+        "description": "Document safety meeting proceedings"
     },
     {
         "heading": "UPL Safety Checklists",
         "href": "/Pages/checklistType.html",
-        "urdu": "UPL حفاظتی چیک لسٹ"
+        "urdu": "UPL حفاظتی چیک لسٹ",
+        "description": "9 specialized safety checklists for 3P agencies"
     }
 ]

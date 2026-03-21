@@ -1,0 +1,4 @@
+.field-error { border-color: #dc2626 !important; }
+.field-error-msg { color: #dc2626; font-size: 12px; margin-top: 4px; display: block; }
+@keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+.field-shake { animation: shake 0.3s ease; }

@@ -17,10 +17,20 @@ const reports = (imageSrc, status, formName, assignedTo, date, entity, id) => {
     </div>`;
 };
 
+const showSkeletonCards = () => {
+  let skeletonHtml = '';
+  for (let i = 0; i < 3; i++) {
+    skeletonHtml += '<div class="skeleton skeleton-card" style="margin:0 16px 12px;"></div>';
+  }
+  $(".reports").html(skeletonHtml);
+};
+
 const fetchReports = () => {
   let username = localStorage.getItem("userName");
+  showSkeletonCards();
 
   sendRequest("api/ChangeForm/fetchReports?userName=" + username, "GET", {}, (data) => {
+    if (!data) data = [];
     reportCountCaller(data.length);
     if (!data.length) {
       $(".reports").html(`

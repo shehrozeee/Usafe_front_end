@@ -26,11 +26,14 @@ function getFormValues(formId, url, obj) {
       fieldType !== "button"
     ) {
       if (!element.readOnly && (element.value.includes("Select") || element.value === "") && fieldType !== "file") {
+        if (typeof markFieldError === 'function') {
+          markFieldError(element, "Please provide a value for " + (element.id || element.name));
+          $(obj).attr("disabled", false);
+          return;
+        }
         swalNotification("Please select a value for " + element.id, "warning");
-        //border color change to red
         element.style.borderColor = "red";
         $(obj).attr("disabled", false);
-
         return;
       }
       if (fieldType === "checkbox") {

@@ -1,4 +1,4 @@
-const createReportingTypeTemplate = (heading, href, urdu) => {
+const createReportingTypeTemplate = (heading, href, urdu, description) => {
   const selectedLanguage = localStorage.getItem("previousLanguage");
   let title = heading;
   if (urdu) {
@@ -16,7 +16,7 @@ const createReportingTypeTemplate = (heading, href, urdu) => {
   return `
     <button class="usafe-card" onclick="${navigateAction}">
       <div class="usafe-card-content">
-        <span class="usafe-card-title">${title}</span>
+        <span class="usafe-card-title">${title}</span>${description ? `<span style="display:block;font-size:12px;color:#888;font-weight:400;margin-top:2px;">${description}</span>` : ''}
         <i class="fas fa-chevron-right usafe-card-arrow"></i>
       </div>
     </button>`;

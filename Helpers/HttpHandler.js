@@ -69,6 +69,10 @@ const swalNotification = (message, type) => {
 };
 
 function swalSuccess(message) {
+  if (typeof celebrate === 'function') {
+    celebrate(message);
+    return;
+  }
   swal.fire({
     title: "Saved Successfully",
     text: message,
