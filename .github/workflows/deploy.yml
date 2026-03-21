@@ -15,7 +15,10 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Playwright
+      - name: Install dependencies
+        run: npm install playwright
+
+      - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
       - name: Start local server
