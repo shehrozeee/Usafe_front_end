@@ -93,9 +93,10 @@ function changePlaceholder() {
 function loadSelectedLanguage() {
     const selectedLanguage = localStorage.getItem('previousLanguage');
     if (selectedLanguage) {
-        document.getElementById('languageSelect').value = selectedLanguage;
+        const langSelect = document.getElementById('languageSelect');
+        if (langSelect) langSelect.value = selectedLanguage;
     }
-    changePlaceholder(); // Apply the stored language selection
+    if (typeof changePlaceholder === 'function') changePlaceholder();
 }
 loadSelectedLanguage(); // Call the function to load the previously selected language on page load
 
