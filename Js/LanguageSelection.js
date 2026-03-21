@@ -52,7 +52,7 @@ function changePlaceholder() {
                 ur.style.display = 'none'
             });
 
-            action.placeholder = 'Action'
+            if (action) action.placeholder = 'Action'
             if (selectedLanguage) {
                 for (const selectElement of selectElements) {
                     for (const option of selectElement.options) {
