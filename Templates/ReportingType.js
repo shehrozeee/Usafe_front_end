@@ -16,7 +16,10 @@ const createReportingTypeTemplate = (heading, href, urdu, description) => {
   return `
     <button class="usafe-card" onclick="${navigateAction}">
       <div class="usafe-card-content">
-        <span class="usafe-card-title">${title}</span>${description ? `<span style="display:block;font-size:12px;color:#888;font-weight:400;margin-top:2px;">${description}</span>` : ''}
+        <div style="flex:1;min-width:0;">
+          <span class="usafe-card-title">${title}</span>
+          ${description ? `<span style="display:block;font-size:12px;color:#999;font-weight:400;margin-top:3px;line-height:1.3;">${description}</span>` : ''}
+        </div>
         <i class="fas fa-chevron-right usafe-card-arrow"></i>
       </div>
     </button>`;
