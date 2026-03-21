@@ -559,7 +559,7 @@ const submitResultSet = (obj) => {
   let department = document.getElementById("department") ? $("#department option:selected").text() : "N/A";
   let area = document.getElementById("area") ? $("#area option:selected").text() : "N/A";
 
-  // Validate all non-compliant items have actions/responsibility
+  // Validate all non-compliant items have actions
   const nonCompliant = resultSet.filter(x => x.compliance === 'NonCompliant');
   const missingActions = nonCompliant.filter(x => !x.actions);
 

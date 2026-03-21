@@ -650,24 +650,8 @@
         );
     };
 
-    const getResponsiblePersons = (obj) => {
-        let siteId = getValue("siteId");
-        let departmentId = $("#department option:selected").val();
-        let areaId = $("#area option:selected").val();
-        sendRequest(`Employee/GetAllEmployeeOfSite?siteId=${siteId}&deptId=${departmentId}&areaId=${areaId}`, "GET", null, (response) => {
-            let employees = response;
-            let responsibilityElements = document.querySelectorAll('.responsiblity');
-
-            responsibilityElements.forEach((element) => {
-                let employeeHtml = "<option selected disabled hidden> Select Responsible Person </option>";
-                employees.forEach((employee) => {
-                    employeeHtml += `<option value="${employee.id}">${employee.name}</option>`;
-                });
-                element.innerHTML = employeeHtml;
-            });
-
-        });
-    };
+    // Responsibility is now auto-assigned on the backend — no dropdown to populate
+    const getResponsiblePersons = () => {};
 
 </script>
 
