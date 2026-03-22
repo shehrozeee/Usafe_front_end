@@ -65,12 +65,18 @@ const collectDraftData = () => {
   };
 };
 
+let _lastToastTime = 0;
 const saveDraft = () => {
   if (!_currentCheckList) return;
   try {
     const draft = collectDraftData();
     localStorage.setItem(_getDraftKey(), JSON.stringify(draft));
-    if (typeof showToast === 'function') showToast('Draft saved', 'success');
+    // Show toast at most once per 30 seconds
+    const now = Date.now();
+    if (typeof showToast === 'function' && now - _lastToastTime > 30000) {
+      showToast('Draft saved', 'success');
+      _lastToastTime = now;
+    }
   } catch (e) {
     console.warn('Auto-save draft failed:', e);
   }
@@ -125,6 +131,13 @@ const restoreDraft = (draft) => {
         } else if (type === 'acknowledged') {
           const el = document.getElementById(`response${qId}`);
           if (el) el.checked = (resp.responseValue === 'Acknowledged');
+        } else if (type === 'rating') {
+          if (resp.responseValue) {
+            const radio = document.querySelector(`input[name="Response${qId}"][value="${resp.responseValue}"]`);
+            if (radio) radio.checked = true;
+          }
+          const remarksEl = document.getElementById(`remarks${qId}`);
+          if (remarksEl && resp.remarks) remarksEl.value = resp.remarks;
         }
       });
     });
