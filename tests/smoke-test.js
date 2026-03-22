@@ -216,6 +216,35 @@ async function setupAuth(page) {
     await page.evaluate(() => localStorage.setItem('usafe_onboarded', 'true'));
   });
 
+  // ── Test 9: Draft save toast is throttled ───────────────────────────────
+  await runTest('Draft save toast is throttled in code', async () => {
+    // Read the GenericQuestioneerProcessor.js and verify the throttle logic exists
+    await page.goto(`${BASE_URL}/Pages/Authentication/loginPage/loginPage.html`);
+    const jsContent = await page.evaluate(async (baseUrl) => {
+      const resp = await fetch(`${baseUrl}/Js/GenericQuestioneerProcessor.js`);
+      return resp.text();
+    }, BASE_URL);
+    if (!jsContent.includes('_lastToastTime')) throw new Error('Missing _lastToastTime throttle variable');
+    if (!jsContent.includes('30000')) throw new Error('Missing 30-second throttle interval');
+    if (!jsContent.includes('now - _lastToastTime')) throw new Error('Missing throttle comparison logic');
+  });
+
+  // ── Test 10: Rating type handled in draft restore ─────────────────────
+  await runTest('Rating type handled in draft restore', async () => {
+    await page.goto(`${BASE_URL}/Pages/Authentication/loginPage/loginPage.html`);
+    const jsContent = await page.evaluate(async (baseUrl) => {
+      const resp = await fetch(`${baseUrl}/Js/GenericQuestioneerProcessor.js`);
+      return resp.text();
+    }, BASE_URL);
+    if (!jsContent.includes("type === 'rating'")) throw new Error('Missing rating case in restoreDraft');
+    // Also verify collectResponseValue handles rating (in ResponseRenderers.js)
+    const rrContent = await page.evaluate(async (baseUrl) => {
+      const resp = await fetch(`${baseUrl}/Js/ResponseRenderers.js`);
+      return resp.text();
+    }, BASE_URL);
+    if (!rrContent.includes("case 'rating'")) throw new Error('Missing rating case in collectResponseValue');
+  });
+
   // ── Summary ─────────────────────────────────────────────────────────────
   await browser.close();
 
