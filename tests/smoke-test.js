@@ -245,6 +245,54 @@ async function setupAuth(page) {
     if (!rrContent.includes("case 'rating'")) throw new Error('Missing rating case in collectResponseValue');
   });
 
+  // ── Test 11: No responsibility dropdown on forms ────────────────────────
+  await runTest('No responsibility dropdown on forms', async () => {
+    await page.goto(`${BASE_URL}/Pages/IncidentReporting/SafeUnsafeActs.html`);
+    await page.waitForSelector('#safeUnsafeAct');
+    // Ensure no select element with class "responsiblity" exists
+    const respDropdown = await page.$('select.responsiblity');
+    if (respDropdown) throw new Error('Found a select.responsiblity dropdown — it should have been removed');
+    // Ensure terminal common fields container does not contain "Responsibility" as a label
+    const terminalText = await page.$eval('#terminalCommonFields', el => el.textContent);
+    if (/Responsibility/i.test(terminalText)) {
+      throw new Error('Terminal common fields still contains "Responsibility" label text');
+    }
+    await screenshot(page, '11-no-responsibility-dropdown');
+  });
+
+  // ── Test 12: Department shows site name (not "Default") ────────────────
+  await runTest('Department shows site name not Default', async () => {
+    await page.goto(`${BASE_URL}/Pages/IncidentReporting/SafeUnsafeActs.html`);
+    await page.waitForSelector('#initialCommonFields', { state: 'visible', timeout: 10000 });
+    // Wait a moment for Initials.js to populate the department field
+    await page.waitForTimeout(1000);
+    // The department input should contain the siteName from localStorage ("Bullseye"), not "Default"
+    const deptValue = await page.evaluate(() => {
+      const input = document.querySelector('#initialCommonFields input[name="Department"], #initialCommonFields select[name="Department"], #initialCommonFields [id*="epartment"]');
+      if (!input) return '__NOT_FOUND__';
+      return input.value || input.textContent || '';
+    });
+    if (deptValue === '__NOT_FOUND__') throw new Error('Department input not found in initialCommonFields');
+    if (/default/i.test(deptValue)) throw new Error(`Department value is "Default" — should be site name`);
+    if (!deptValue.includes('Bullseye')) throw new Error(`Expected department to contain "Bullseye", got "${deptValue}"`);
+    await screenshot(page, '12-department-site-name');
+  });
+
+  // ── Test 13: Reporting type descriptions exist ─────────────────────────
+  await runTest('Reporting type descriptions exist', async () => {
+    await page.goto(`${BASE_URL}/Pages/reportingType.html`);
+    await page.waitForSelector('#reportingTypes');
+    await page.waitForSelector('#reportingTypes .usafe-card, #reportingTypes button', { timeout: 10000 });
+    const text = await page.textContent('#reportingTypes');
+    if (!text.includes('Report safe or unsafe')) {
+      throw new Error('Missing description "Report safe or unsafe" in reporting types');
+    }
+    if (!text.includes('Flag potential')) {
+      throw new Error('Missing description "Flag potential" in reporting types');
+    }
+    await screenshot(page, '13-reporting-type-descriptions');
+  });
+
   // ── Summary ─────────────────────────────────────────────────────────────
   await browser.close();
 
