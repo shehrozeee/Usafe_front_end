@@ -216,6 +216,23 @@ async function setupAuth(page) {
     await page.evaluate(() => localStorage.setItem('usafe_onboarded', 'true'));
   });
 
+  // ── Test 9a: Checklist wizard has photo upload support ─────────────────
+  await runTest('Checklist wizard has photo upload support', async () => {
+    await page.goto(`${BASE_URL}/Pages/Authentication/loginPage/loginPage.html`);
+    const jsContent = await page.evaluate(async (baseUrl) => {
+      const resp = await fetch(`${baseUrl}/Js/GenericQuestioneerProcessor.js`);
+      return resp.text();
+    }, BASE_URL);
+    // Verify photo upload function exists
+    if (!jsContent.includes('handleChecklistPhotoSelect')) throw new Error('Missing handleChecklistPhotoSelect function');
+    // Verify file upload input is rendered in result page
+    if (!jsContent.includes('checklistPhotoInput')) throw new Error('Missing checklistPhotoInput element');
+    // Verify uploaded URLs are included in payload
+    if (!jsContent.includes('_uploadedFileUrls')) throw new Error('Missing _uploadedFileUrls variable');
+    // Verify files field is in the submission payload
+    if (!jsContent.includes('files: _uploadedFileUrls.length > 0')) throw new Error('Missing files in submission payload');
+  });
+
   // ── Test 9: Draft save toast is throttled ───────────────────────────────
   await runTest('Draft save toast is throttled in code', async () => {
     // Read the GenericQuestioneerProcessor.js and verify the throttle logic exists

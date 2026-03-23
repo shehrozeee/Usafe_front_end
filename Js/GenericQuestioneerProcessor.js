@@ -20,6 +20,7 @@ let _allQuestions = [];
 let resultSet = [];
 let _headerFields = [];
 let _totalSteps = 0;
+let _uploadedFileUrls = [];
 
 // ===== Auto-Save Draft =====
 let _draftSaveInterval = null;
@@ -554,12 +555,91 @@ const buildResultPage = () => {
     });
   });
 
+  // Photo upload section
+  html += `
+    <div class="photo-upload-section" style="margin:20px 0; padding:16px; background:#f9fafb; border-radius:12px; border:1px dashed #d1d5db;">
+      <div style="font-size:13px; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">
+        Attach Photos (Optional)
+      </div>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <label for="checklistPhotoInput" class="btn btn-wizard-back" style="margin:0; cursor:pointer; font-size:13px;">
+          <i class="fa fa-camera"></i> Choose Photos
+        </label>
+        <input type="file" id="checklistPhotoInput" accept="image/*" multiple capture="environment"
+          style="display:none;" onchange="handleChecklistPhotoSelect(this)" />
+        <span id="photoUploadStatus" style="font-size:12px; color:#6b7280;"></span>
+      </div>
+      <div id="photoPreviewContainer" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;"></div>
+    </div>`;
+
   html += `
     <div class="wizard-nav">
       <button class="btn btn-wizard-back" onclick="goBackFromReview()">← Edit Answers</button>
-      <button class="btn btn-wizard-next" onclick="submitResultSet(this)">Submit ✓</button>
+      <button class="btn btn-wizard-next" id="submitChecklistBtn" onclick="submitResultSet(this)">Submit ✓</button>
     </div>`;
   return html;
+};
+
+// ===== Photo Upload =====
+const handleChecklistPhotoSelect = (input) => {
+  const files = input.files;
+  if (!files || files.length === 0) return;
+
+  const statusEl = document.getElementById('photoUploadStatus');
+  const previewContainer = document.getElementById('photoPreviewContainer');
+  const submitBtn = document.getElementById('submitChecklistBtn');
+
+  statusEl.textContent = `Uploading ${files.length} photo(s)...`;
+  if (submitBtn) submitBtn.disabled = true;
+
+  const formData = new FormData();
+  for (let i = 0; i < files.length; i++) {
+    formData.append('files', files[i]);
+  }
+
+  $.ajax({
+    url: `${serverURL}/api/checklist/uploadFiles`,
+    method: 'POST',
+    data: formData,
+    processData: false,
+    contentType: false,
+    headers: {
+      token: localStorage.getItem('token'),
+      email: localStorage.getItem('userName')
+    },
+    success: (result) => {
+      if (submitBtn) submitBtn.disabled = false;
+      if (result.status === 200 && result.urls) {
+        _uploadedFileUrls = _uploadedFileUrls.concat(result.urls);
+        statusEl.textContent = `${_uploadedFileUrls.length} photo(s) attached`;
+        statusEl.style.color = '#16a34a';
+
+        // Show previews
+        result.urls.forEach(url => {
+          const img = document.createElement('img');
+          img.src = `${serverURL}/api/changeform/fetchTaskDetails?id=0&entity=preview`; // placeholder
+          img.alt = 'Uploaded';
+          img.style.cssText = 'width:60px; height:60px; object-fit:cover; border-radius:8px; border:1px solid #d1d5db;';
+          // Use a checkmark icon instead of trying to render S3 keys
+          const badge = document.createElement('div');
+          badge.style.cssText = 'width:60px; height:60px; background:#dcfce7; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:20px; color:#16a34a; border:1px solid #d1d5db;';
+          badge.innerHTML = '<i class="fa fa-check"></i>';
+          previewContainer.appendChild(badge);
+        });
+      } else {
+        statusEl.textContent = 'Upload failed. You can still submit without photos.';
+        statusEl.style.color = '#dc2626';
+      }
+    },
+    error: () => {
+      if (submitBtn) submitBtn.disabled = false;
+      statusEl.textContent = 'Upload failed. You can still submit without photos.';
+      statusEl.style.color = '#dc2626';
+    }
+  });
+
+  // Reset input so same files can be re-selected
+  input.value = '';
 };
 
 // ===== Submission =====
@@ -590,12 +670,14 @@ const submitResultSet = (obj) => {
     area,
     siteId,
     headerValues: collectHeaderValues(),
-    checkListData: resultSet
+    checkListData: resultSet,
+    files: _uploadedFileUrls.length > 0 ? JSON.stringify(_uploadedFileUrls) : null
   };
 
   sendRequest('api/checklist/saveCheckList', 'POST', JSON.stringify(payload), result => {
     if (result.status == 200) {
       clearDraft();
+      _uploadedFileUrls = [];
       swalSuccess("Checklist Saved Successfully");
     }
   });
