@@ -649,8 +649,11 @@ const submitResultSet = (obj) => {
   let parent = getValue("sectionFor");
   let reportedBy = localStorage.getItem("userName");
   let siteId = localStorage.getItem("siteId");
-  let department = document.getElementById("department") ? $("#department option:selected").text() : "N/A";
-  let area = document.getElementById("area") ? $("#area option:selected").text() : "N/A";
+  // Department is always the site name
+  let department = localStorage.getItem("siteName") || localStorage.getItem("departments") && JSON.parse(localStorage.getItem("departments"))[0]?.name || "N/A";
+  // Area from header field input or default empty
+  let areaEl = document.getElementById("area") || document.getElementById("Area");
+  let area = areaEl ? (areaEl.value || areaEl.textContent || "").trim() : "";
 
   // Validate all non-compliant items have actions
   const nonCompliant = resultSet.filter(x => x.compliance === 'NonCompliant');
