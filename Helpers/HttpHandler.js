@@ -9,14 +9,19 @@ const CLIENT_LOG_URL = "api/diagnostics/clientlog";
 const isAuthenticated = () =>
   !!localStorage.getItem("token") && !!localStorage.getItem("userName");
 
-// A failure while reporting must never report itself.
-let _reportInFlight = false;
+// Cap reports per page load so a loop cannot flood the log. A simple in-flight
+// lock would have been smaller, but it silently drops the second of two errors
+// that happen together — which is exactly when we most want both.
+const MAX_REPORTS_PER_PAGE = 10;
+let _reportsSent = 0;
 
 const reportErrorToServer = (details) => {
-  if (!isAuthenticated() || _reportInFlight) return;
+  if (!isAuthenticated()) return;
+  if (_reportsSent >= MAX_REPORTS_PER_PAGE) return;
+  // A failure while reporting must never report itself.
   if ((details.url || "").indexOf(CLIENT_LOG_URL) !== -1) return;
 
-  _reportInFlight = true;
+  _reportsSent++;
   try {
     $.ajax({
       url: `${serverURL}/${CLIENT_LOG_URL}`,
@@ -34,12 +39,9 @@ const reportErrorToServer = (details) => {
         stack: String(details.stack || "").slice(0, 4000),
         userAgent: navigator.userAgent,
       }),
-      complete: () => {
-        _reportInFlight = false;
-      },
     });
   } catch (e) {
-    _reportInFlight = false;
+    // Reporting must never break the page it is reporting about.
   }
 };
 

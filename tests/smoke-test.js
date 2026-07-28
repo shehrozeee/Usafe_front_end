@@ -116,6 +116,13 @@ async function gotoAndWaitFor(page, url, selector, attempts = 3) {
     viewport: { width: 390, height: 844 }, // iPhone 14 size
     userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
   });
+  // Stub the API by default. Pages call the live API on load; letting those reach
+  // production made the suite depend on the network and, worse, a 401 from a mock
+  // token would clear localStorage mid-run and cascade into unrelated tests.
+  // Per-test page.route() calls are matched first, so tests can still override this.
+  await context.route(/usafe\.innidata\.com/, route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }));
+
   const page = await context.newPage();
 
   // Increase default timeout for slower local servers
@@ -435,9 +442,11 @@ async function gotoAndWaitFor(page, url, selector, attempts = 3) {
     await page.goto(`${BASE_URL}/Pages/reporting/reporting.html`);
     await setupAuth(page);
 
-    let clientLogBody = null;
+    // Collect every report: the page makes its own API calls on load, and on CI
+    // those fail too, so we must find ours rather than assume it arrived alone.
+    const clientLogs = [];
     await page.route('**/api/diagnostics/clientlog', async (route) => {
-      clientLogBody = JSON.parse(route.request().postData() || '{}');
+      clientLogs.push(JSON.parse(route.request().postData() || '{}'));
       await route.fulfill({ status: 200, contentType: 'application/json',
         body: JSON.stringify({ status: 200, reference: 'srv-ref-1' }) });
     });
@@ -457,13 +466,17 @@ async function gotoAndWaitFor(page, url, selector, attempts = 3) {
     if (!dialog.includes('ref-abc-123')) throw new Error(`Reference missing from dialog: ${dialog}`);
 
     // ...and it was reported to the server, with the page and status attached.
-    await page.waitForFunction(() => true);
-    await page.waitForTimeout(600);
-    if (!clientLogBody) throw new Error('Error was not reported to the server');
-    if (clientLogBody.status !== 500) throw new Error(`Reported status ${clientLogBody.status}, expected 500`);
-    if (!clientLogBody.page.includes('reporting.html')) {
-      throw new Error(`Reported page was "${clientLogBody.page}"`);
+    const deadline = Date.now() + 5000;
+    let mine = null;
+    while (Date.now() < deadline && !mine) {
+      mine = clientLogs.find(l => (l.url || '').includes('changeform/boom'));
+      if (!mine) await page.waitForTimeout(200);
     }
+    if (!mine) {
+      throw new Error(`Error was not reported to the server. Reports seen: ${JSON.stringify(clientLogs)}`);
+    }
+    if (mine.status !== 500) throw new Error(`Reported status ${mine.status}, expected 500`);
+    if (!mine.page.includes('reporting.html')) throw new Error(`Reported page was "${mine.page}"`);
     await screenshot(page, '18-server-error-message');
     await page.unroute('**/api/diagnostics/clientlog');
     await page.unroute('**/api/changeform/boom');
@@ -491,9 +504,12 @@ async function gotoAndWaitFor(page, url, selector, attempts = 3) {
     await page.goto(`${BASE_URL}/Pages/reporting/reporting.html`);
     await page.evaluate(() => localStorage.clear());
 
+    // Only count a report for the request we deliberately fail — the page may make
+    // its own calls, and we care that *this* one stayed unreported.
     let reported = false;
     await page.route('**/api/diagnostics/clientlog', async (route) => {
-      reported = true;
+      const body = JSON.parse(route.request().postData() || '{}');
+      if ((body.url || '').includes('boom2')) reported = true;
       await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
     });
     await page.route('**/api/changeform/boom2', route =>
