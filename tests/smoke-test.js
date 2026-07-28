@@ -430,6 +430,83 @@ async function gotoAndWaitFor(page, url, selector, attempts = 3) {
     if (single) throw new Error('Agency bar should be hidden for single-site users');
   });
 
+  // ── Test 18: server errors show a real message, not "some error occured" ─
+  await runTest('Server error shows the real message and reference', async () => {
+    await page.goto(`${BASE_URL}/Pages/reporting/reporting.html`);
+    await setupAuth(page);
+
+    let clientLogBody = null;
+    await page.route('**/api/diagnostics/clientlog', async (route) => {
+      clientLogBody = JSON.parse(route.request().postData() || '{}');
+      await route.fulfill({ status: 200, contentType: 'application/json',
+        body: JSON.stringify({ status: 200, reference: 'srv-ref-1' }) });
+    });
+    await page.route('**/api/changeform/boom', async (route) => {
+      await route.fulfill({ status: 500, contentType: 'application/json',
+        body: JSON.stringify({ status: 500, message: 'Something went wrong on our side.', reference: 'ref-abc-123' }) });
+    });
+
+    await page.evaluate(() => sendRequest('api/changeform/boom', 'GET', null, () => {}));
+    await page.waitForSelector('.swal2-container', { timeout: 10000 });
+    const dialog = await page.textContent('.swal2-container');
+
+    if (/some error occured/i.test(dialog)) throw new Error('Still showing the old generic message');
+    if (!dialog.includes('Something went wrong on our side.')) {
+      throw new Error(`Server message missing from dialog: ${dialog}`);
+    }
+    if (!dialog.includes('ref-abc-123')) throw new Error(`Reference missing from dialog: ${dialog}`);
+
+    // ...and it was reported to the server, with the page and status attached.
+    await page.waitForFunction(() => true);
+    await page.waitForTimeout(600);
+    if (!clientLogBody) throw new Error('Error was not reported to the server');
+    if (clientLogBody.status !== 500) throw new Error(`Reported status ${clientLogBody.status}, expected 500`);
+    if (!clientLogBody.page.includes('reporting.html')) {
+      throw new Error(`Reported page was "${clientLogBody.page}"`);
+    }
+    await screenshot(page, '18-server-error-message');
+    await page.unroute('**/api/diagnostics/clientlog');
+    await page.unroute('**/api/changeform/boom');
+  });
+
+  // ── Test 19: offline gets its own message, and is not reported ──────────
+  await runTest('Offline shows a connection message', async () => {
+    await page.goto(`${BASE_URL}/Pages/reporting/reporting.html`);
+    await setupAuth(page);
+    await page.goto(`${BASE_URL}/Pages/reporting/reporting.html`);
+
+    await page.route('**/api/changeform/offline', route => route.abort('failed'));
+
+    await page.evaluate(() => sendRequest('api/changeform/offline', 'GET', null, () => {}));
+    await page.waitForSelector('.swal2-container', { timeout: 10000 });
+    const dialog = await page.textContent('.swal2-container');
+
+    if (!/offline/i.test(dialog)) throw new Error(`Expected an offline message, got: ${dialog}`);
+    await screenshot(page, '19-offline-message');
+    await page.unroute('**/api/changeform/offline');
+  });
+
+  // ── Test 20: nothing is reported when signed out ────────────────────────
+  await runTest('Errors are not reported when signed out', async () => {
+    await page.goto(`${BASE_URL}/Pages/reporting/reporting.html`);
+    await page.evaluate(() => localStorage.clear());
+
+    let reported = false;
+    await page.route('**/api/diagnostics/clientlog', async (route) => {
+      reported = true;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+    });
+    await page.route('**/api/changeform/boom2', route =>
+      route.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"nope"}' }));
+
+    await page.evaluate(() => sendRequest('api/changeform/boom2', 'GET', null, () => {}));
+    await page.waitForTimeout(1200);
+
+    if (reported) throw new Error('Reported an error without an authenticated session');
+    await page.unroute('**/api/diagnostics/clientlog');
+    await page.unroute('**/api/changeform/boom2');
+  });
+
   // ── Summary ─────────────────────────────────────────────────────────────
   await browser.close();
 

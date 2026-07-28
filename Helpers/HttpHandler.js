@@ -1,3 +1,148 @@
+// ── Error reporting ─────────────────────────────────────────────────────────
+// Every failure used to end as "some error occured", which told the user nothing
+// and left us nothing to debug. Now the user gets a message that says what
+// happened, and — when signed in — the details go to the server log too, so a
+// screenshot is enough for us to find the entry.
+
+const CLIENT_LOG_URL = "api/diagnostics/clientlog";
+
+const isAuthenticated = () =>
+  !!localStorage.getItem("token") && !!localStorage.getItem("userName");
+
+// A failure while reporting must never report itself.
+let _reportInFlight = false;
+
+const reportErrorToServer = (details) => {
+  if (!isAuthenticated() || _reportInFlight) return;
+  if ((details.url || "").indexOf(CLIENT_LOG_URL) !== -1) return;
+
+  _reportInFlight = true;
+  try {
+    $.ajax({
+      url: `${serverURL}/${CLIENT_LOG_URL}`,
+      method: "POST",
+      contentType: "application/json",
+      headers: {
+        token: localStorage.getItem("token"),
+        email: localStorage.getItem("userName"),
+      },
+      data: JSON.stringify({
+        message: String(details.message || "unknown error").slice(0, 1000),
+        page: window.location.pathname + window.location.search,
+        url: details.url || "",
+        status: details.status || 0,
+        stack: String(details.stack || "").slice(0, 4000),
+        userAgent: navigator.userAgent,
+      }),
+      complete: () => {
+        _reportInFlight = false;
+      },
+    });
+  } catch (e) {
+    _reportInFlight = false;
+  }
+};
+
+/** The server's own message and reference, when it sent JSON. */
+const serverError = (xhr) => {
+  let body = xhr.responseJSON;
+  if (!body && xhr.responseText) {
+    try {
+      body = JSON.parse(xhr.responseText);
+    } catch (e) {
+      body = null;
+    }
+  }
+  if (!body || typeof body !== "object") return {};
+  return { message: body.message, reference: body.reference };
+};
+
+/** A message that says what actually happened and what to do about it. */
+const describeHttpError = (xhr) => {
+  const fromServer = serverError(xhr);
+
+  if (xhr.status === 0) {
+    return {
+      text: "You appear to be offline. Check your connection and try again — your details are still on screen.",
+      reference: null,
+    };
+  }
+
+  let text;
+  switch (xhr.status) {
+    case 400:
+      text =
+        fromServer.message ||
+        "Some details are missing or not valid. Please check the form and try again.";
+      break;
+    case 403:
+      text =
+        fromServer.message ||
+        "You do not have access to this. If you think you should, ask your site manager.";
+      break;
+    case 404:
+      text = fromServer.message || "We could not find that — it may have been removed.";
+      break;
+    case 413:
+      text = "That photo is too large. Please take or choose a smaller one.";
+      break;
+    case 500:
+    case 502:
+    case 503:
+    case 504:
+      text =
+        fromServer.message ||
+        "Something went wrong on our side. Please try again in a moment.";
+      break;
+    default:
+      text =
+        fromServer.message ||
+        `Something went wrong (error ${xhr.status}). Please try again.`;
+  }
+
+  return { text, reference: fromServer.reference || null };
+};
+
+/** Shared failure path for both request helpers. */
+const handleRequestError = (xhr, url) => {
+  if (xhr.status === 401) {
+    localStorage.clear();
+    swal
+      .fire({
+        title: "Session expired",
+        text: "Please sign in again to continue.",
+        icon: "warning",
+        confirmButtonText: "Sign in",
+      })
+      .then(() => {
+        window.location.href = "/Pages/Authentication/loginPage/loginPage.html";
+      });
+    return;
+  }
+
+  // Re-enable whatever the user pressed so they can retry.
+  $("button").attr("disabled", false);
+  $("#load").hide();
+
+  const described = describeHttpError(xhr);
+
+  reportErrorToServer({
+    message: `HTTP ${xhr.status} on ${url} — ${described.text}`,
+    url: url,
+    status: xhr.status,
+    stack: String(xhr.responseText || "").slice(0, 2000),
+  });
+
+  swal.fire({
+    title: "That did not work",
+    text: described.reference
+      ? `${described.text}\n\nReference: ${described.reference}`
+      : described.text,
+    icon: "error",
+    confirmButtonText: "OK",
+  });
+};
+
 const sendRequest = (url, method, body, successCallback) => {
   $.ajax({
     url: `${serverURL}/${url}`,
@@ -14,18 +159,7 @@ const sendRequest = (url, method, body, successCallback) => {
       : (data) => {
           swalSuccess("Data Saved Successfully");
         },
-    error: (xhr, ajaxOptions, thrownError) => {
-      if(xhr.status === 401){
-        alert("Your session has expired. Please login again");
-        localStorage.clear();
-        window.location.href = "/Pages/Authentication/loginPage/loginPage.html";
-        return;
-      }
-      //if any button is disabled then enable it
-      $('button').attr('disabled',false);
-      alert("some error occured");
-      $('#load').hide();
-    },
+    error: (xhr) => handleRequestError(xhr, url),
   });
 };
 
@@ -34,7 +168,6 @@ const sendRequestWithFiles = (url, method, body, successCallback) => {
     url: `${serverURL}/${url}`,
     method: method || "GET",
     data: body || {},
-    contentType: "application/json",
     processData: false,
     contentType: false,
     headers: {
@@ -46,16 +179,7 @@ const sendRequestWithFiles = (url, method, body, successCallback) => {
       : (data) => {
           swalSuccess("Data Saved Successfully");
         },
-    error: (xhr, ajaxOptions, thrownError) => {
-      if(xhr.status === 401){
-        alert("Your session has expired. Please login again");
-        localStorage.clear();
-        window.location.href = "/Pages/Authentication/loginPage/loginPage.html";
-        return;
-      }
-      $('button').attr('disabled',false);
-      swalNotification("some error occured", "error");
-    },
+    error: (xhr) => handleRequestError(xhr, url),
   });
 };
 
@@ -85,3 +209,21 @@ function swalSuccess(message) {
     }
   });
 }
+
+// ── Uncaught client-side errors ─────────────────────────────────────────────
+// A crash in page code never reached us before; it just left a dead button.
+window.addEventListener("error", (event) => {
+  reportErrorToServer({
+    message: event.message || "Uncaught error",
+    url: `${event.filename || "?"}:${event.lineno || 0}`,
+    stack: (event.error && event.error.stack) || "",
+  });
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  const reason = event.reason || {};
+  reportErrorToServer({
+    message: "Unhandled promise rejection: " + (reason.message || String(reason)),
+    stack: reason.stack || "",
+  });
+});
