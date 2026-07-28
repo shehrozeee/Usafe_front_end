@@ -50,7 +50,7 @@ async function screenshot(page, name) {
 }
 
 // ── Helper: set up authenticated session (mock — no API dependency) ─────────
-async function setupAuth(page) {
+async function setupAuth(page, sites) {
   const mockUser = {
     userName: CREDS.email,
     siteId: '1',
@@ -58,6 +58,7 @@ async function setupAuth(page) {
     token: 'mock-test-token-' + Date.now(),
     userRole: 'AreaManager',
     fullName: 'Mohsin Ali',
+    sites: sites || [{ siteId: 1, siteName: 'Bullseye' }],
   };
 
   await page.evaluate((data) => {
@@ -68,6 +69,7 @@ async function setupAuth(page) {
     localStorage.setItem('userRole', data.userRole);
     localStorage.setItem('fullName', data.fullName);
     localStorage.setItem('usafe_onboarded', 'true');
+    localStorage.setItem('sites', JSON.stringify(data.sites));
     const exp = new Date();
     exp.setDate(exp.getDate() + 1);
     localStorage.setItem('expiryDate', exp.toISOString());
@@ -75,6 +77,32 @@ async function setupAuth(page) {
   }, mockUser);
 
   return mockUser;
+}
+
+// Two agencies — the multi-site / back-checking-agency case.
+const MULTI_SITES = [
+  { siteId: 1, siteName: 'Bullseye' },
+  { siteId: 7, siteName: 'SecureGuard' },
+];
+
+/**
+ * Navigate and wait for a selector, retrying the navigation if it does not show.
+ * CheckUser.js issues an unconditional redirect when it finds no session, and
+ * that redirect can still be in flight when the next test navigates — which
+ * aborts the load and leaves the page's async field rendering unfinished.
+ */
+async function gotoAndWaitFor(page, url, selector, attempts = 3) {
+  let lastError;
+  for (let i = 0; i < attempts; i++) {
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    try {
+      await page.waitForSelector(selector, { state: 'attached', timeout: 5000 });
+      return;
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw new Error(`"${selector}" never appeared on ${url} after ${attempts} attempts: ${lastError.message}`);
 }
 
 // ── Main ────────────────────────────────────────────────────────────────────
@@ -279,10 +307,9 @@ async function setupAuth(page) {
 
   // ── Test 12: Department shows site name (not "Default") ────────────────
   await runTest('Department shows site name not Default', async () => {
-    await page.goto(`${BASE_URL}/Pages/IncidentReporting/SafeUnsafeActs.html`);
-    await page.waitForSelector('#initialCommonFields', { state: 'visible', timeout: 10000 });
+    await gotoAndWaitFor(page, `${BASE_URL}/Pages/IncidentReporting/SafeUnsafeActs.html`, '#Department');
     // Wait a moment for Initials.js to populate the department field
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
     // The department input should contain the siteName from localStorage ("Bullseye"), not "Default"
     const deptValue = await page.evaluate(() => {
       const input = document.querySelector('#initialCommonFields input[name="Department"], #initialCommonFields select[name="Department"], #initialCommonFields [id*="epartment"]');
@@ -308,6 +335,99 @@ async function setupAuth(page) {
       throw new Error('Missing description "Flag potential" in reporting types');
     }
     await screenshot(page, '13-reporting-type-descriptions');
+  });
+
+  // ── Test 14: Single-site user sees no agency picker ────────────────────
+  await runTest('Single-site user keeps readonly Department field', async () => {
+    await page.goto(`${BASE_URL}/Pages/IncidentReporting/SafeUnsafeActs.html`);
+    await setupAuth(page); // defaults to one site
+    // Fields are injected by an async config fetch — wait for the field itself.
+    await gotoAndWaitFor(page, `${BASE_URL}/Pages/IncidentReporting/SafeUnsafeActs.html`, '#Department');
+    await page.waitForTimeout(300);
+
+    const shape = await page.evaluate(() => {
+      const el = document.getElementById('Department');
+      return el ? { tag: el.tagName, value: el.value, readOnly: !!el.readOnly } : null;
+    });
+    if (!shape) throw new Error('Department field not found');
+    if (shape.tag !== 'INPUT') throw new Error(`Expected INPUT for single-site user, got ${shape.tag}`);
+    if (!shape.readOnly) throw new Error('Single-site Department field should stay readonly');
+    if (!shape.value.includes('Bullseye')) throw new Error(`Expected "Bullseye", got "${shape.value}"`);
+    await screenshot(page, '14-single-site-department');
+  });
+
+  // ── Test 15: Multi-site user gets an agency dropdown ───────────────────
+  await runTest('Multi-site user gets Department dropdown of agencies', async () => {
+    // First visit may be bounced to onboarding by CheckUser.js; seed the session
+    // on whatever page we land on (same origin) and navigate again.
+    await page.goto(`${BASE_URL}/Pages/IncidentReporting/SafeUnsafeActs.html`);
+    await setupAuth(page, MULTI_SITES);
+    await gotoAndWaitFor(page, `${BASE_URL}/Pages/IncidentReporting/SafeUnsafeActs.html`, '#Department');
+    await page.waitForTimeout(300);
+
+    const shape = await page.evaluate(() => {
+      const el = document.getElementById('Department');
+      if (!el) return null;
+      return {
+        tag: el.tagName,
+        value: el.value,
+        options: Array.from(el.options || []).map(o => ({ value: o.value, siteId: o.dataset.siteId })),
+      };
+    });
+    if (!shape) throw new Error('Department field not found');
+    if (shape.tag !== 'SELECT') throw new Error(`Expected SELECT for multi-site user, got ${shape.tag}`);
+    if (shape.options.length !== 2) throw new Error(`Expected 2 agencies, got ${shape.options.length}`);
+    // Option value must be the site NAME — that is what the server stores as Department.
+    if (!shape.options.some(o => o.value === 'SecureGuard' && o.siteId === '7')) {
+      throw new Error(`Expected a SecureGuard option carrying data-site-id=7, got ${JSON.stringify(shape.options)}`);
+    }
+    if (shape.value !== 'Bullseye') throw new Error(`Expected active agency "Bullseye", got "${shape.value}"`);
+    await screenshot(page, '15-multi-site-department');
+  });
+
+  // ── Test 16: Switching agency updates the active site ──────────────────
+  await runTest('Switching agency updates siteId and siteName', async () => {
+    // First visit may be bounced to onboarding by CheckUser.js; seed the session
+    // on whatever page we land on (same origin) and navigate again.
+    await page.goto(`${BASE_URL}/Pages/IncidentReporting/SafeUnsafeActs.html`);
+    await setupAuth(page, MULTI_SITES);
+    await gotoAndWaitFor(page, `${BASE_URL}/Pages/IncidentReporting/SafeUnsafeActs.html`, '#Department');
+    await page.waitForTimeout(300);
+
+    await page.selectOption('#Department', 'SecureGuard');
+
+    const stored = await page.evaluate(() => ({
+      siteId: localStorage.getItem('siteId'),
+      siteName: localStorage.getItem('siteName'),
+    }));
+    if (stored.siteId !== '7') throw new Error(`Expected siteId "7", got "${stored.siteId}"`);
+    if (stored.siteName !== 'SecureGuard') throw new Error(`Expected siteName "SecureGuard", got "${stored.siteName}"`);
+    await screenshot(page, '16-agency-switched');
+  });
+
+  // ── Test 17: Reporting hub shows the agency bar for multi-site users ───
+  await runTest('Reporting hub shows agency bar only for multi-site users', async () => {
+    // Multi-site: bar present
+    await page.goto(`${BASE_URL}/Pages/reportingType.html`);
+    await setupAuth(page, MULTI_SITES);
+    await gotoAndWaitFor(page, `${BASE_URL}/Pages/reportingType.html`, '#activeSiteSelect');
+    await page.waitForTimeout(300);
+
+    const multi = await page.evaluate(() => {
+      const sel = document.getElementById('activeSiteSelect');
+      return sel ? { count: sel.options.length, value: sel.value } : null;
+    });
+    if (!multi) throw new Error('Agency bar missing for multi-site user');
+    if (multi.count !== 2) throw new Error(`Expected 2 agencies in bar, got ${multi.count}`);
+    await screenshot(page, '17-agency-bar');
+
+    // Single-site: bar absent
+    await setupAuth(page);
+    await gotoAndWaitFor(page, `${BASE_URL}/Pages/reportingType.html`, '#reportingTypes');
+    await page.waitForTimeout(300);
+
+    const single = await page.evaluate(() => !!document.getElementById('activeSiteSelect'));
+    if (single) throw new Error('Agency bar should be hidden for single-site users');
   });
 
   // ── Summary ─────────────────────────────────────────────────────────────

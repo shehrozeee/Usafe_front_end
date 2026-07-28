@@ -9,6 +9,8 @@ const Login = () => {
                 localStorage.setItem("userName", data.userName);
                 localStorage.setItem("siteId", data.siteId);
                 localStorage.setItem("siteName", data.siteName || "");
+                // Every agency this user may report for — drives the agency picker
+                localStorage.setItem("sites", JSON.stringify(data.sites || []));
                 //set token
                 localStorage.setItem("token", data.token);
                 localStorage.setItem("userRole", data.userRole);

@@ -102,9 +102,14 @@
 
     <!-- Page Content -->
     <div class="page-container usafe-page-content">
+        <!-- Agency picker — only rendered for users assigned to more than one site -->
+        <div id="siteBar"></div>
         <div class="page-subtitle">Select type</div>
         <div id="reportingTypes"></div>
     </div>
+
+    <script src="../Js/Common/SiteSelector.js"></script>
+    <script>renderSiteBar('siteBar');</script>
 
     <!-- Bottom Navigation -->
     <script src="../Components/bottomNav/bottomNav.js"></script>

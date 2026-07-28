@@ -5,14 +5,18 @@ $.get('../../configuration/InitialCommonFields.json', structure => {
             createInitialCommonTemplate(element));
     });
 
-    // Auto-fill Department with site name
-    let siteName = localStorage.getItem("siteName") || "";
-    if (siteName && document.getElementById('Department')) {
-        document.getElementById('Department').value = siteName;
-    } else {
-        let departments = JSON.parse(localStorage.getItem("departments") || "[]");
-        if (departments.length > 0 && document.getElementById('Department')) {
-            document.getElementById('Department').value = departments[0].name;
+    // Department is the agency: a dropdown for multi-site users, otherwise the
+    // single site name in the readonly field.
+    let departmentField = document.getElementById('Department');
+    if (departmentField && !renderSiteSelect(departmentField)) {
+        let siteName = getActiveSiteName();
+        if (siteName) {
+            departmentField.value = siteName;
+        } else {
+            let departments = JSON.parse(localStorage.getItem("departments") || "[]");
+            if (departments.length > 0) {
+                departmentField.value = departments[0].name;
+            }
         }
     }
 });

@@ -27,6 +27,7 @@
     <script src="../../Js/HeaderTitle.js"></script>
     <script src="../../Global/URLS.js"></script>
     <script src="../../Helpers/LocalStorage.js"></script>
+    <script src="../../Js/Common/SiteSelector.js"></script>
     <script src="../../Helpers/HttpHandler.js"></script>
     <script src="../../Js/Authentication/CheckUser.js"></script>
 
@@ -610,8 +611,10 @@
     }
 
     const createInitialElements = () => {
-        let departments = JSON.parse(getValue("departments") || "[]");
-        let siteName = departments.length > 0 ? departments[0].name : "";
+        // Department is the agency — a dropdown when the user has more than one.
+        let departmentHtml = isMultiSiteUser()
+            ? `<select id="department" class="sam-input">${buildSiteOptions()}</select>`
+            : `<input type="text" id="department" class="sam-input" value="${getActiveSiteName()}" readonly>`;
 
         let wizardHtml = `
     <div class="taskDetailContainer" style="padding-bottom:0;">
@@ -619,7 +622,7 @@
         <div class="sam-card-title">Location</div>
         <div class="sam-field">
             <label class="sam-label">Department</label>
-            <input type="text" id="department" class="sam-input" value="${siteName}" readonly>
+            ${departmentHtml}
         </div>
         <div class="sam-field">
             <label class="sam-label">Area</label>
@@ -628,6 +631,10 @@
     </div>
     </div>`;
         $('#initialElementDiv').html(wizardHtml);
+
+        if (isMultiSiteUser()) {
+            document.getElementById('department').addEventListener('change', onSiteSelectChange);
+        }
     };
 
     createInitialElements();
