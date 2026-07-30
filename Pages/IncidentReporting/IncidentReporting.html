@@ -91,11 +91,24 @@
                     <option value="Safe Travel" class="english-text">Safe Travel</option>
                     <option value="Manual Trolly" class="english-text">Manual Trolly</option>
                     <option value="Ergonomics" class="english-text">Ergonomics</option>
+                    <option value="Other" class="english-text">Other (write your own)</option>
                     <option class="urdu-text" lang="ur">وجہ</option>
                     <option value="محفوظ سفر" class="urdu-text">محفوظ سفر</option>
                     <option value="دستی ٹرالی" class="urdu-text">دستی ٹرالی</option>
                     <option value="فعالیات پیمائی" class="urdu-text">فعالیات پیمائی</option>
+                    <option value="Other" class="urdu-text">دیگر (اپنی وجہ لکھیں)</option>
                 </select>
+            </div>
+
+            <!-- Free-text reason, shown only when "Other" is selected. No id/name so the
+                 generic getFormValues() collector ignores it; the typed value is mirrored
+                 into the selected #ActTyp option so it submits through the existing field. -->
+            <div class="form-group" id="otherReasonGroup" style="display:none;">
+                <label>
+                    <span class="english-text">Please write your reason</span>
+                    <span class="urdu-text" lang="ur">براہ کرم اپنی وجہ لکھیں</span>
+                </label>
+                <input type="text" class="form-control js-other-reason" placeholder="Write your reason here" autocomplete="off" />
             </div>
             <div class="form-group">
                 <label>
@@ -146,6 +159,43 @@
     <script src="../../Js/HeaderTitle.js"></script>
     <script src="../../Helpers/FormDataHandler.js"></script>
     <script src="../../Js/LanguageSelection.js"></script>
+    <script>
+      // "Other" reason: reveal a free-text box and mirror what the user types into the
+      // selected #ActTyp option, so the custom reason submits through the existing field
+      // without touching the generic form collector or the backend.
+      (function () {
+        var reasonSelect = document.getElementById('ActTyp');
+        var otherGroup = document.getElementById('otherReasonGroup');
+        var otherInput = otherGroup ? otherGroup.querySelector('.js-other-reason') : null;
+        if (!reasonSelect || !otherGroup || !otherInput) return;
+
+        function isOtherSelected() {
+          var opt = reasonSelect.options[reasonSelect.selectedIndex];
+          // the option keeps its original text ("Other ...") even after we overwrite its value
+          return !!opt && /^Other|^دیگر/.test(opt.text.trim());
+        }
+
+        function syncOtherValue() {
+          var opt = reasonSelect.options[reasonSelect.selectedIndex];
+          if (!opt) return;
+          // fall back to "Other" so the field is never empty (avoids a false validation error)
+          opt.value = otherInput.value.trim() || 'Other';
+        }
+
+        reasonSelect.addEventListener('change', function () {
+          if (isOtherSelected()) {
+            otherGroup.style.display = 'block';
+            syncOtherValue();
+            otherInput.focus();
+          } else {
+            otherGroup.style.display = 'none';
+            otherInput.value = '';
+          }
+        });
+
+        otherInput.addEventListener('input', syncOtherValue);
+      })();
+    </script>
     <script>
       //create an on focus event and onfocus call fetchReport Function
       document.onreadystatechange = function () {
