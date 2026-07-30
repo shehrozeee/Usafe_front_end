@@ -60,6 +60,7 @@
         let values = JSON.parse(data.values);
         //iterate over values and create html from it. object key as a label and object value as a value of input element
         for (const key in values) {
+          if (key === 'FileCategories') continue; // internal: used to label photos below
           if (values.hasOwnProperty(key)) {
             const element = values[key];
             if (key == 'Date') {
@@ -99,10 +100,13 @@
         }
         if (data.files) {
           let files = JSON.parse(data.files);
+          let cats = [];
+          try { if (values && values.FileCategories) cats = JSON.parse(values.FileCategories); } catch (e) { }
           for (let id = 0; id < files.length; id++) {
             const element = files[id];
+            const label = cats[id] ? cats[id] : 'Photos';
             html += ` <div class='RepPhoto'>
-      <label>Photos</label>
+      <label>${label}</label>
       <img src="${element}" />
     </div>`;
           }

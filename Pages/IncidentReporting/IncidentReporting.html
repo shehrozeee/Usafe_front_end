@@ -146,10 +146,32 @@
                   </label>
             </div>
 
+            <!-- Incident photos grouped by category. Each input accepts multiple images and
+                 carries data-imgfield so the shared collector submits it under that category;
+                 the default single "Photo" uploader (injected below) is hidden for this form. -->
+            <div class="form-group">
+                <label style="font-weight:bold">
+                    <span class="english-text">Incident Photos — add at least 4 (Where / How / Why)</span>
+                    <span class="urdu-text" lang="ur">واقعے کی تصاویر — کم از کم 4 (کہاں / کیسے / کیوں)</span>
+                </label>
+            </div>
+            <div class="form-group">
+                <label for="ImgWhere"><span class="english-text">Where it happened</span><span class="urdu-text" lang="ur">کہاں ہوا</span></label>
+                <input type="file" class="form-control" id="ImgWhere" data-imgfield="whereImages" accept="image/*" capture="environment" multiple />
+            </div>
+            <div class="form-group">
+                <label for="ImgHow"><span class="english-text">How it happened</span><span class="urdu-text" lang="ur">کیسے ہوا</span></label>
+                <input type="file" class="form-control" id="ImgHow" data-imgfield="howImages" accept="image/*" capture="environment" multiple />
+            </div>
+            <div class="form-group">
+                <label for="ImgWhy"><span class="english-text">Why it happened</span><span class="urdu-text" lang="ur">کیوں ہوا</span></label>
+                <input type="file" class="form-control" id="ImgWhy" data-imgfield="whyImages" accept="image/*" capture="environment" multiple />
+            </div>
+
             <div id="terminalCommonFields"></div>
             <!-- <button class="btn btn-secondary btn-block" type="button" onclick="getFormValues('incidentReporting','api/changeform/savechangeformdata')">Submit<span id="ursubmit" lang="ur">جمع کرائیں
             </span></button> -->
-            <button class="btn btn-secondary btn-block" type="button" onclick="getFormValues('incidentReporting', 'api/changeform/savechangeformdata',this)">
+            <button class="btn btn-secondary btn-block" type="button" onclick="submitIncident(this)">
                 <span class="english-text">Submit</span>
                 <span class="urdu-text" lang="ur">جمع کرائیں</span>
               </button>
@@ -159,6 +181,43 @@
     <script src="../../Js/HeaderTitle.js"></script>
     <script src="../../Helpers/FormDataHandler.js"></script>
     <script src="../../Js/LanguageSelection.js"></script>
+    <script>
+      // This form uses categorized Where/How/Why photo inputs, so hide the default single
+      // "Photo" uploader that the shared terminal-common-fields injects (async).
+      (function () {
+        function hideDefaultPhoto() {
+          var p = document.getElementById('Photo');
+          if (!p) return false;
+          var row = p.closest('.row');
+          if (row) row.style.display = 'none';
+          var st = document.getElementById('status');
+          if (st) st.style.display = 'none';
+          return true;
+        }
+        if (!hideDefaultPhoto()) {
+          var tries = 0;
+          var iv = setInterval(function () {
+            if (hideDefaultPhoto() || ++tries > 20) clearInterval(iv);
+          }, 300);
+        }
+      })();
+
+      function countIncidentPhotos() {
+        return ['ImgWhere', 'ImgHow', 'ImgWhy'].reduce(function (n, id) {
+          var el = document.getElementById(id);
+          return n + (el && el.files ? el.files.length : 0);
+        }, 0);
+      }
+
+      // Require at least 4 photos across the three categories, then submit as usual.
+      function submitIncident(btn) {
+        if (countIncidentPhotos() < 4) {
+          swalNotification('Please add at least 4 photos across Where / How / Why.', 'warning');
+          return;
+        }
+        getFormValues('incidentReporting', 'api/changeform/savechangeformdata', btn);
+      }
+    </script>
     <script>
       // "Other" reason: reveal a free-text box and mirror what the user types into the
       // selected #ActTyp option, so the custom reason submits through the existing field
