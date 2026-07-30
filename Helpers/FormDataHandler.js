@@ -56,14 +56,13 @@ function getFormValues(formId, url, obj) {
   }
 
   if (containFiles) {
-    var fileElement = Array.from(form.getElementsByTagName("input")).filter(
+    var fileElements = Array.from(form.getElementsByTagName("input")).filter(
       function (element) {
         return element.type === "file";
       }
-    )[0];
+    );
 
-    var fieldName = fileElement.id || fileElement.name;
-    let picturesFormData = getFileValues(fileElement);
+    let picturesFormData = getFileValues(fileElements);
     picturesFormData.append("values", JSON.stringify(values));
 
     values = picturesFormData;
@@ -76,13 +75,22 @@ function getFormValues(formId, url, obj) {
 
   return false;
 }
-function getFileValues(fileElement) {
+function getFileValues(fileElements) {
   var formData = new FormData();
 
-  for (var i = 0; i < fileElement.files.length; i++) {
-    var file = fileElement.files[i];
-    formData.append("pictures", file);
-  }
+  // Accept a single element (legacy callers) or an array of file inputs.
+  if (!Array.isArray(fileElements)) fileElements = [fileElements];
+
+  fileElements.forEach(function (fileElement) {
+    // Field name defaults to "pictures" (unchanged for existing forms). Inputs that
+    // set data-imgfield (e.g. the incident Where/How/Why slots) submit under that name
+    // so the backend can record each photo's category.
+    var field =
+      (fileElement.dataset && fileElement.dataset.imgfield) || "pictures";
+    for (var i = 0; i < fileElement.files.length; i++) {
+      formData.append(field, fileElement.files[i]);
+    }
+  });
 
   return formData;
 }
