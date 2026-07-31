@@ -328,17 +328,28 @@
         }
       })();
 
-      function countIncidentPhotos() {
-        return ['ImgWhere', 'ImgHow', 'ImgWhy'].reduce(function (n, id) {
-          var el = document.getElementById(id);
-          return n + (el && el.files ? el.files.length : 0);
-        }, 0);
+      var INCIDENT_PHOTO_SLOTS = [
+        { id: 'ImgWhere', label: 'Where it happened' },
+        { id: 'ImgHow', label: 'How it happened' },
+        { id: 'ImgWhy', label: 'Why it happened' }
+      ];
+
+      function emptyIncidentPhotoSlots() {
+        return INCIDENT_PHOTO_SLOTS.filter(function (slot) {
+          var el = document.getElementById(slot.id);
+          return !el || !el.files || el.files.length === 0;
+        });
       }
 
-      // Require at least 4 photos across the three categories, then submit as usual.
+      // Each category needs at least one photo; more are welcome. Then submit as usual.
       function submitIncident(btn) {
-        if (countIncidentPhotos() < 4) {
-          swalNotification('Please add at least 4 photos across Where / How / Why.', 'warning');
+        var missing = emptyIncidentPhotoSlots();
+        if (missing.length) {
+          swalNotification(
+            'Please add at least one photo for: ' +
+              missing.map(function (s) { return s.label; }).join(', ') + '.',
+            'warning'
+          );
           return;
         }
         getFormValues('incidentReporting', 'api/changeform/savechangeformdata', btn);
