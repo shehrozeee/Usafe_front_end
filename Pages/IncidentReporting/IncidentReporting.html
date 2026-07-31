@@ -154,6 +154,167 @@
             accent-color: #f5b700;
             margin-right: 4px;
         }
+
+        /* ── Photo Uploader ──
+           The native <input type="file"> stays in the form (the shared collector reads
+           input.files), it is just moved off-screen and driven by the card below. */
+        .photo-section-title {
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            color: #888;
+            margin: 22px 0 10px;
+        }
+
+        .photo-section-title small {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0;
+            text-transform: none;
+            color: #aaa;
+            margin-top: 2px;
+        }
+
+        .photo-slot {
+            background: #ffffff;
+            border: 1.5px dashed #dcdcdc;
+            border-radius: 14px;
+            padding: 12px;
+            margin-bottom: 12px;
+            transition: border-color 0.2s, background-color 0.2s;
+        }
+
+        .photo-slot.has-files {
+            border-style: solid;
+            border-color: #f5b700;
+            background: #fffdf5;
+        }
+
+        .photo-slot.is-missing {
+            border-color: #e5534b;
+            background: #fff7f6;
+        }
+
+        .photo-slot-head {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .photo-slot-icon {
+            flex: 0 0 40px;
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: #2d2d2d;
+            color: #f5b700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .photo-slot.has-files .photo-slot-icon {
+            background: #f5b700;
+            color: #2d2d2d;
+        }
+
+        .photo-slot-text {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .photo-slot-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #2d2d2d;
+            line-height: 1.2;
+        }
+
+        .photo-slot-hint {
+            font-size: 12px;
+            font-weight: 600;
+            color: #999;
+            margin-top: 2px;
+        }
+
+        .photo-slot.has-files .photo-slot-hint {
+            color: #b78500;
+        }
+
+        .photo-slot-add {
+            flex: 0 0 auto;
+            background: #2d2d2d;
+            color: #f5b700;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 700;
+            font-size: 13px;
+            padding: 8px 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .photo-thumbs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .photo-thumbs:empty {
+            display: none;
+        }
+
+        .photo-thumb {
+            position: relative;
+            width: 68px;
+            height: 68px;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #ececec;
+            background: #f5f5f5;
+        }
+
+        .photo-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .photo-thumb-remove {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 20px;
+            height: 20px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.65);
+            color: #ffffff;
+            font-size: 11px;
+            line-height: 1;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* keep the input focusable/clickable for the file dialog without showing it */
+        .photo-slot input[type="file"] {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+        }
     </style>
 </head>
 
@@ -278,18 +439,79 @@
 
             <!-- Incident photos grouped by category. Each input accepts multiple images and
                  carries data-imgfield so the shared collector submits it under that category;
-                 the default single "Photo" uploader (injected below) is hidden for this form. -->
-            <div class="form-group">
-                <label for="ImgWhere"><span class="english-text">Where it happened</span><span class="urdu-text" lang="ur">کہاں ہوا</span></label>
-                <input type="file" class="form-control" id="ImgWhere" data-imgfield="whereImages" accept="image/*" multiple />
+                 the default single "Photo" uploader (injected below) is hidden for this form.
+                 The inputs are visually hidden and driven by the cards; the shared collector
+                 still reads them straight off the form, so submission is unchanged. -->
+            <div class="photo-section-title">
+                <span class="english-text">Incident Photos</span>
+                <span class="urdu-text" lang="ur">واقعہ کی تصاویر</span>
+                <small>
+                    <span class="english-text">One photo minimum for each of the three below.</span>
+                    <span class="urdu-text" lang="ur">نیچے دی گئی تینوں اقسام کے لیے کم از کم ایک تصویر۔</span>
+                </small>
             </div>
-            <div class="form-group">
-                <label for="ImgHow"><span class="english-text">How it happened</span><span class="urdu-text" lang="ur">کیسے ہوا</span></label>
-                <input type="file" class="form-control" id="ImgHow" data-imgfield="howImages" accept="image/*" multiple />
+
+            <div class="photo-slot" id="slot-ImgWhere">
+                <div class="photo-slot-head" onclick="openPhotoPicker('ImgWhere')">
+                    <div class="photo-slot-icon"><i class="fa fa-map-marker-alt"></i></div>
+                    <div class="photo-slot-text">
+                        <div class="photo-slot-title">
+                            <span class="english-text">Where it happened</span>
+                            <span class="urdu-text" lang="ur">کہاں ہوا</span>
+                        </div>
+                        <div class="photo-slot-hint" id="hint-ImgWhere">
+                            <span class="english-text">Tap to add photos</span>
+                            <span class="urdu-text" lang="ur">تصاویر شامل کرنے کے لیے دبائیں</span>
+                        </div>
+                    </div>
+                    <button type="button" class="photo-slot-add" onclick="event.stopPropagation(); openPhotoPicker('ImgWhere')">
+                        <i class="fa fa-camera"></i> <span class="english-text">Add</span><span class="urdu-text" lang="ur">شامل</span>
+                    </button>
+                </div>
+                <div class="photo-thumbs" id="thumbs-ImgWhere"></div>
+                <input type="file" id="ImgWhere" data-imgfield="whereImages" accept="image/*" multiple tabindex="-1" />
             </div>
-            <div class="form-group">
-                <label for="ImgWhy"><span class="english-text">Why it happened</span><span class="urdu-text" lang="ur">کیوں ہوا</span></label>
-                <input type="file" class="form-control" id="ImgWhy" data-imgfield="whyImages" accept="image/*" multiple />
+
+            <div class="photo-slot" id="slot-ImgHow">
+                <div class="photo-slot-head" onclick="openPhotoPicker('ImgHow')">
+                    <div class="photo-slot-icon"><i class="fa fa-bolt"></i></div>
+                    <div class="photo-slot-text">
+                        <div class="photo-slot-title">
+                            <span class="english-text">How it happened</span>
+                            <span class="urdu-text" lang="ur">کیسے ہوا</span>
+                        </div>
+                        <div class="photo-slot-hint" id="hint-ImgHow">
+                            <span class="english-text">Tap to add photos</span>
+                            <span class="urdu-text" lang="ur">تصاویر شامل کرنے کے لیے دبائیں</span>
+                        </div>
+                    </div>
+                    <button type="button" class="photo-slot-add" onclick="event.stopPropagation(); openPhotoPicker('ImgHow')">
+                        <i class="fa fa-camera"></i> <span class="english-text">Add</span><span class="urdu-text" lang="ur">شامل</span>
+                    </button>
+                </div>
+                <div class="photo-thumbs" id="thumbs-ImgHow"></div>
+                <input type="file" id="ImgHow" data-imgfield="howImages" accept="image/*" multiple tabindex="-1" />
+            </div>
+
+            <div class="photo-slot" id="slot-ImgWhy">
+                <div class="photo-slot-head" onclick="openPhotoPicker('ImgWhy')">
+                    <div class="photo-slot-icon"><i class="fa fa-question"></i></div>
+                    <div class="photo-slot-text">
+                        <div class="photo-slot-title">
+                            <span class="english-text">Why it happened</span>
+                            <span class="urdu-text" lang="ur">کیوں ہوا</span>
+                        </div>
+                        <div class="photo-slot-hint" id="hint-ImgWhy">
+                            <span class="english-text">Tap to add photos</span>
+                            <span class="urdu-text" lang="ur">تصاویر شامل کرنے کے لیے دبائیں</span>
+                        </div>
+                    </div>
+                    <button type="button" class="photo-slot-add" onclick="event.stopPropagation(); openPhotoPicker('ImgWhy')">
+                        <i class="fa fa-camera"></i> <span class="english-text">Add</span><span class="urdu-text" lang="ur">شامل</span>
+                    </button>
+                </div>
+                <div class="photo-thumbs" id="thumbs-ImgWhy"></div>
+                <input type="file" id="ImgWhy" data-imgfield="whyImages" accept="image/*" multiple tabindex="-1" />
             </div>
 
             <div id="terminalCommonFields"></div>
@@ -334,6 +556,108 @@
         { id: 'ImgWhy', label: 'Why it happened' }
       ];
 
+      // Preview URLs per slot, revoked whenever that slot re-renders.
+      var _photoPreviewUrls = { ImgWhere: [], ImgHow: [], ImgWhy: [] };
+
+      function openPhotoPicker(slotId) {
+        var input = document.getElementById(slotId);
+        if (input) input.click();
+      }
+
+      // Picking again normally REPLACES the FileList; rebuild it so each pick adds to
+      // what is already there (skipping duplicates by name+size). Browsers without
+      // DataTransfer keep the plain replace behaviour.
+      function mergePickedPhotos(input, picked) {
+        if (typeof DataTransfer === 'undefined') return;
+        var dt = new DataTransfer();
+        var seen = {};
+        var add = function (file) {
+          var key = file.name + '|' + file.size + '|' + (file.lastModified || 0);
+          if (seen[key]) return;
+          seen[key] = true;
+          dt.items.add(file);
+        };
+        (input._keptFiles || []).forEach(add);
+        Array.prototype.forEach.call(picked, add);
+        input.files = dt.files;
+        input._keptFiles = Array.prototype.slice.call(dt.files);
+      }
+
+      function removeIncidentPhoto(slotId, index) {
+        var input = document.getElementById(slotId);
+        if (!input || typeof DataTransfer === 'undefined') return;
+        var dt = new DataTransfer();
+        Array.prototype.forEach.call(input.files, function (file, i) {
+          if (i !== index) dt.items.add(file);
+        });
+        input.files = dt.files;
+        input._keptFiles = Array.prototype.slice.call(dt.files);
+        renderIncidentPhotoSlot(slotId);
+      }
+
+      function renderIncidentPhotoSlot(slotId) {
+        var input = document.getElementById(slotId);
+        var card = document.getElementById('slot-' + slotId);
+        var thumbs = document.getElementById('thumbs-' + slotId);
+        var hint = document.getElementById('hint-' + slotId);
+        if (!input || !card || !thumbs || !hint) return;
+
+        var files = input.files ? Array.prototype.slice.call(input.files) : [];
+
+        _photoPreviewUrls[slotId].forEach(function (url) { URL.revokeObjectURL(url); });
+        _photoPreviewUrls[slotId] = [];
+        thumbs.innerHTML = '';
+
+        files.forEach(function (file, i) {
+          var url = URL.createObjectURL(file);
+          _photoPreviewUrls[slotId].push(url);
+
+          var box = document.createElement('div');
+          box.className = 'photo-thumb';
+
+          var img = document.createElement('img');
+          img.src = url;
+          img.alt = file.name;
+          box.appendChild(img);
+
+          var remove = document.createElement('button');
+          remove.type = 'button';
+          remove.className = 'photo-thumb-remove';
+          remove.innerHTML = '&times;';
+          remove.setAttribute('aria-label', 'Remove photo');
+          remove.onclick = function (e) {
+            e.stopPropagation();
+            removeIncidentPhoto(slotId, i);
+          };
+          box.appendChild(remove);
+
+          thumbs.appendChild(box);
+        });
+
+        card.classList.toggle('has-files', files.length > 0);
+        if (files.length) card.classList.remove('is-missing');
+
+        // Update the label text in place so the language toggle keeps working.
+        var en = hint.querySelector('.english-text');
+        var ur = hint.querySelector('.urdu-text');
+        if (files.length) {
+          if (en) en.textContent = files.length + (files.length === 1 ? ' photo added' : ' photos added') + ' — tap to add more';
+          if (ur) ur.textContent = files.length + ' تصاویر شامل — مزید کے لیے دبائیں';
+        } else {
+          if (en) en.textContent = 'Tap to add photos';
+          if (ur) ur.textContent = 'تصاویر شامل کرنے کے لیے دبائیں';
+        }
+      }
+
+      INCIDENT_PHOTO_SLOTS.forEach(function (slot) {
+        var input = document.getElementById(slot.id);
+        if (!input) return;
+        input.addEventListener('change', function () {
+          mergePickedPhotos(input, input.files);
+          renderIncidentPhotoSlot(slot.id);
+        });
+      });
+
       function emptyIncidentPhotoSlots() {
         return INCIDENT_PHOTO_SLOTS.filter(function (slot) {
           var el = document.getElementById(slot.id);
@@ -344,7 +668,19 @@
       // Each category needs at least one photo; more are welcome. Then submit as usual.
       function submitIncident(btn) {
         var missing = emptyIncidentPhotoSlots();
+        INCIDENT_PHOTO_SLOTS.forEach(function (slot) {
+          var card = document.getElementById('slot-' + slot.id);
+          if (card) card.classList.remove('is-missing');
+        });
         if (missing.length) {
+          missing.forEach(function (slot) {
+            var card = document.getElementById('slot-' + slot.id);
+            if (card) card.classList.add('is-missing');
+          });
+          var firstCard = document.getElementById('slot-' + missing[0].id);
+          if (firstCard && firstCard.scrollIntoView) {
+            firstCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
           swalNotification(
             'Please add at least one photo for: ' +
               missing.map(function (s) { return s.label; }).join(', ') + '.',
