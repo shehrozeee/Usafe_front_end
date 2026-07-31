@@ -318,8 +318,10 @@
         function hideDefaultPhoto() {
           var p = document.getElementById('Photo');
           if (!p) return false;
-          var row = p.closest('.row');
-          if (row) row.style.display = 'none';
+          // the template wraps the input in .row on older layouts and .form-group after
+          // the UI redesign — hide whichever container this build actually rendered
+          var box = p.closest('.row') || p.closest('.form-group');
+          if (box) box.style.display = 'none';
           var st = document.getElementById('status');
           if (st) st.style.display = 'none';
           return true;
