@@ -6,6 +6,12 @@
         "urdu": "محکمہ"
     },
     {
+        "name": "Activity",
+        "elementTag": "input",
+        "type": "text",
+        "urdu": "سرگرمی"
+    },
+    {
         "name": "Area",
         "elementTag": "input",
         "type": "text",
