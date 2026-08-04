@@ -4,7 +4,7 @@ if (document.title.includes("Environmental")) {
     $.get('../configuration/environmentalReporting.json', structure => {
         //iterate through the structure and call the function to create the template
         structure.forEach(element => {
-           $('#reportingTypes').append(createReportingTypeTemplate(element.heading, element.href,element.urdu,element.description));
+           $('#reportingTypes').append(createReportingTypeTemplate(element.heading, element.href,element.urdu,element.description, true));
         });
     })
     
@@ -13,7 +13,7 @@ if (document.title.includes("Environmental")) {
     $.get('../configuration/ReportingTypes.json', structure => {
         //iterate through the structure and call the function to create the template
         structure.forEach(element => {
-            $('#reportingTypes').append(createReportingTypeTemplate(element.heading, element.href,element.urdu,element.description));
+            $('#reportingTypes').append(createReportingTypeTemplate(element.heading, element.href,element.urdu,element.description, true));
         });
     })
 }

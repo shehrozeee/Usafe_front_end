@@ -1,15 +1,16 @@
-const createReportingTypeTemplate = (heading, href, urdu, description) => {
+// storesSectionFor: the caller says whether tapping a card starts a new report.
+// Reporting-type pages pass true — sectionFor becomes formName on submit, and a
+// missing one makes the API reject the report. Checklist-type pages pass false so
+// the sectionFor set by the Checklists tab survives. This used to be inferred from
+// ".html" in the path, which broke once the host started serving extensionless URLs.
+const createReportingTypeTemplate = (heading, href, urdu, description, storesSectionFor) => {
   const selectedLanguage = localStorage.getItem("previousLanguage");
   let title = heading;
   if (urdu) {
     title = selectedLanguage === "ur" ? urdu : heading;
   }
-  var url_string = window.location.href;
-  var url = new URL(url_string);
 
-  // For reporting type pages, store sectionFor before navigating
-  const isReportingPage = url.pathname.includes("reportingType.html") || url.pathname.includes("EnvironmentalChanges.html");
-  const navigateAction = isReportingPage
+  const navigateAction = storesSectionFor
     ? `setValue('sectionFor', '${heading}'); window.location.href='${href}?heading=${heading}';`
     : `window.location.href='${href}?heading=${heading}';`;
 

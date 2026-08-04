@@ -176,6 +176,60 @@ async function gotoAndWaitFor(page, url, selector, attempts = 3) {
     await screenshot(page, '04-reporting-types');
   });
 
+  // ── Test 4b: Tapping a card stores sectionFor ───────────────────────────
+  // sectionFor becomes formName on submit. The host serves extensionless URLs
+  // (/Pages/reportingType, not …/reportingType.html), so anything that keys off
+  // ".html" in the path silently skips this and the API rejects the report.
+  // The local dev server only serves the .html form, so this test asks for the
+  // extensionless path and maps it back to the file — without that, the page
+  // loads as *.html, the old path check passes, and the bug hides.
+  await runTest('Reporting type card stores sectionFor before navigating', async () => {
+    await page.route(`${BASE_URL}/Pages/reportingType`, route =>
+      route.fetch({ url: `${BASE_URL}/Pages/reportingType.html` }).then(response => route.fulfill({ response })));
+    await page.goto(`${BASE_URL}/Pages/reportingType`);
+    if (page.url().includes('.html')) {
+      throw new Error(`Test must run on an extensionless URL to match the host; got ${page.url()}`);
+    }
+    await page.waitForSelector('#reportingTypes .usafe-card', { timeout: 10000 });
+    await page.evaluate(() => localStorage.removeItem('sectionFor'));
+    const heading = (await page.$eval('#reportingTypes .usafe-card .usafe-card-title', el => el.textContent)).trim();
+    await Promise.all([
+      page.waitForNavigation({ timeout: 10000 }),
+      page.click('#reportingTypes .usafe-card'),
+    ]);
+    const sectionFor = await page.evaluate(() => localStorage.getItem('sectionFor'));
+    if (!sectionFor) {
+      throw new Error(`sectionFor not set after tapping "${heading}" (URL was ${page.url()}) — submit sends formName=null and the API 500s`);
+    }
+    if (sectionFor !== heading) {
+      throw new Error(`Expected sectionFor "${heading}", got "${sectionFor}"`);
+    }
+    await screenshot(page, '04b-section-for-set');
+    await page.unroute(`${BASE_URL}/Pages/reportingType`);
+  });
+
+  // ── Test 4c: formName survives a wiped/stale sectionFor ─────────────────
+  // Second layer: the report is filed under the page's own ?heading=, so a missing
+  // or stale crumb can no longer send formName=null (500) or mislabel the report.
+  await runTest('formName comes from the page heading, not a stale crumb', async () => {
+    await page.goto(`${BASE_URL}/Pages/IncidentReporting/IncidentReporting.html?heading=Incident%20Reporting`);
+    await page.waitForSelector('#incidentReporting', { timeout: 10000 });
+    const derived = await page.evaluate(() => {
+      if (typeof resolveFormName !== 'function') throw new Error('resolveFormName() not loaded on the page');
+      localStorage.setItem('sectionFor', 'UPL Safety Checklists'); // stale, from the Checklists tab
+      const stale = resolveFormName();
+      localStorage.removeItem('sectionFor'); // fresh session, no crumb at all
+      const missing = resolveFormName();
+      return { stale, missing };
+    });
+    if (derived.stale !== 'Incident Reporting') {
+      throw new Error(`Stale crumb won: expected "Incident Reporting", got "${derived.stale}"`);
+    }
+    if (derived.missing !== 'Incident Reporting') {
+      throw new Error(`No crumb gave "${derived.missing}" — submit would send formName=null and the API 500s`);
+    }
+  });
+
   // ── Test 5: Checklist types page renders ────────────────────────────────
   await runTest('Checklist types page structure renders', async () => {
     await page.evaluate(() => {

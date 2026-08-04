@@ -1,9 +1,18 @@
+// The form name is what the report is filed as. Take it from the page's own
+// ?heading= first — sectionFor is a localStorage crumb dropped by whichever card
+// was tapped last, so it goes missing on a fresh session (the API then rejects the
+// report) and goes stale after a visit to the Checklists tab.
+function resolveFormName() {
+  const headingParam = new URLSearchParams(window.location.search).get("heading");
+  return headingParam || localStorage.getItem("sectionFor");
+}
+
 function getFormValues(formId, url, obj) {
   //disable the submit button
   $(obj).attr("disabled", true);
   var form = document.getElementById(formId);
   var elements = form.elements;
-  let formName = localStorage.getItem("sectionFor");
+  let formName = resolveFormName();
   let reportedBy = localStorage.getItem("userName");
   let IsEnvironmental = localStorage.getItem("IsEnvironmental");
   let siteId = localStorage.getItem("siteId");
