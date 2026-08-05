@@ -94,10 +94,16 @@ const clearDraft = () => {
 };
 
 const restoreDraft = (draft) => {
-  // Restore header field values
+  // Restore header field values.
+  //
+  // Match on the stored label, not on position: a draft written before a field was added
+  // to the checklist would otherwise put every later value one box too low. Fall back to
+  // the index so drafts saved without a label still restore.
   if (draft.headerValues && draft.headerValues.length > 0) {
+    const fields = Array.from(document.querySelectorAll('.header-field'));
     draft.headerValues.forEach((hv, i) => {
-      const el = document.getElementById(`headerField_${i}`);
+      const el = (hv.label && fields.find(f => f.dataset.label === hv.label))
+              || document.getElementById(`headerField_${i}`);
       if (el) el.value = hv.value || '';
     });
   }
