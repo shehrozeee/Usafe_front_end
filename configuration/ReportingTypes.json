@@ -46,5 +46,11 @@
         "href": "/Pages/checklistType.html",
         "urdu": "UPL حفاظتی چیک لسٹ",
         "description": "9 specialized safety checklists for 3P agencies"
+    },
+    {
+        "heading": "Risk Assessment",
+        "href": "/Pages/RiskAssessment/RiskAssessment.html",
+        "urdu": "خطرات کا جائزہ",
+        "description": "Assess activity and event hazards before they happen"
     }
 ]
