@@ -41,13 +41,43 @@ function riskCategoryChip(id) {
  * @param {object} scale  { severity: [{value,label}], probability: [{value,label}] }
  */
 function createRiskAssessmentCard(task, index, total, scale) {
+  if (!task) {
+    return `<div class="ra-card"><p class="text-muted">No tasks to assess yet. Use "+ Add task" to log one.</p></div>`;
+  }
+
+  // A task added on site (riskAssessmentRowId === null) has no author to
+  // attribute a name/hazard/description to, so the assessor has to supply
+  // them here. A template-derived task already carries that plan from
+  // whoever authored the template - letting the assessor silently reword it
+  // would misrepresent the template, so those three stay read-only text.
+  const isSiteAdded = task.riskAssessmentRowId === null;
+
+  const nameAndHazardHtml = isSiteAdded ? `
+      <div class="form-group">
+        <label>Task name</label>
+        <input type="text" class="form-control ra-task-name-input" placeholder="What were you doing?"
+          value="${escapeHtml(task.taskName)}">
+      </div>
+      <div class="form-group">
+        <label>Hazard</label>
+        <input type="text" class="form-control ra-hazard-input" placeholder="What could go wrong?"
+          value="${escapeHtml(task.hazard)}">
+      </div>
+      <div class="form-group">
+        <label>Hazard description</label>
+        <textarea class="form-control ra-hazard-description-input" rows="2"
+          placeholder="Describe the cause">${escapeHtml(task.hazardDescription)}</textarea>
+      </div>` : `
+      <h3 class="ra-task-name">${escapeHtml(task.taskName)}</h3>
+      ${task.hazard ? `<p class="ra-hazard"><strong>Hazard:</strong> ${escapeHtml(task.hazard)}</p>` : ''}
+      ${task.hazardDescription ? `<p class="ra-cause">${escapeHtml(task.hazardDescription)}</p>` : ''}`;
+
   return `
     <div class="ra-card" data-index="${index}">
       <div class="ra-progress">Task ${index + 1} of ${total}</div>
+      ${task.skipped ? '<div class="ra-skipped-banner alert alert-warning py-2">This task is marked as skipped.</div>' : ''}
 
-      <h3 class="ra-task-name">${escapeHtml(task.taskName)}</h3>
-      ${task.hazard ? `<p class="ra-hazard"><strong>Hazard:</strong> ${escapeHtml(task.hazard)}</p>` : ''}
-      ${task.hazardDescription ? `<p class="ra-cause">${escapeHtml(task.hazardDescription)}</p>` : ''}
+      ${nameAndHazardHtml}
 
       <div class="form-group">
         <label>Act / Condition</label>
@@ -84,7 +114,7 @@ function createRiskAssessmentCard(task, index, total, scale) {
 
       <div class="form-group">
         <label>Additional Control</label>
-        <textarea class="form-control ra-control" rows="3">${escapeHtml(task.additionalControl || task.suggestedAdditionalControl)}</textarea>
+        <textarea class="form-control ra-control" rows="3">${escapeHtml(task.additionalControl)}</textarea>
       </div>
 
       <div class="ra-section">

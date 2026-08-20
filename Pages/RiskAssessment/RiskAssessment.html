@@ -14,6 +14,7 @@
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"
         integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g=" crossorigin="anonymous"></script>
 
+    <script src="../../Helpers/LocalStorage.js"></script>
     <script src="../../Global/URLS.js"></script>
     <script src="../../Helpers/HttpHandler.js"></script>
     <script src="../../Js/Authentication/CheckUser.js"></script>
@@ -28,15 +29,42 @@
 <body>
     <div id="riskAssessmentRoot">
         <div id="raTemplates"></div>
-        <div id="riskAssessmentCard"></div>
+
+        <!-- Task 9: event header, shown once a template has loaded and before the
+             first task card. eventName/location are prefilled from the template
+             but stay editable - the point is to record what actually happened,
+             not just repeat the plan. department/area are captured here for the
+             first time; the template never carries them. -->
+        <div id="raHeaderStep" class="container" style="display:none;">
+            <h3>Event Details</h3>
+            <div class="form-group">
+                <label for="raEventName">Event / Activity Name</label>
+                <input type="text" id="raEventName" class="form-control" placeholder="What is this assessment for?">
+            </div>
+            <div class="form-group">
+                <label for="raLocation">Location</label>
+                <input type="text" id="raLocation" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="raDepartment">Department</label>
+                <input type="text" id="raDepartment" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="raArea">Area</label>
+                <input type="text" id="raArea" class="form-control">
+            </div>
+            <button id="raHeaderNext" class="btn btn-primary">Continue</button>
+        </div>
+
+        <div id="riskAssessmentCard" style="display:none;"></div>
         <div id="raSummary" style="display:none;"></div>
 
-        <div class="ra-nav">
+        <div class="ra-nav" style="display:none;">
             <button id="raBack" class="btn btn-default">Back</button>
             <button id="raSkip" class="btn btn-default">Skip</button>
             <button id="raNext" class="btn btn-primary">Next</button>
         </div>
-        <div class="ra-actions">
+        <div class="ra-actions" style="display:none;">
             <button id="raAddTask" class="btn btn-default">+ Add task</button>
             <button id="raReview" class="btn btn-default">Review</button>
             <button id="raSubmit" class="btn btn-success" style="display:none;">Submit</button>

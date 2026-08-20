@@ -256,9 +256,52 @@ async function main() {
   await mockRiskApi(page);
   const wizardUrl = `${PAGE_URL}?formId=1`;
 
-  await runTest('chip updates when a score changes', async () => {
-    await page.goto(wizardUrl);
+  // Task 9 added an event-header gate before the first card: eventName and
+  // location come prefilled from the template (FAKE_FORM.eventActivity /
+  // .location), so Continue can be clicked immediately without typing
+  // anything, same as an assessor who is happy with the defaults.
+  async function startWizard(page, url = wizardUrl) {
+    await page.goto(url);
+    await page.waitForSelector('#raHeaderStep', { state: 'visible' });
+    await page.click('#raHeaderNext');
     await page.waitForSelector('.ra-card');
+  }
+
+  await runTest('the header gate blocks Continue with no event name', async () => {
+    await page.goto(wizardUrl);
+    await page.waitForSelector('#raHeaderStep', { state: 'visible' });
+
+    await page.fill('#raEventName', '');
+    await page.click('#raHeaderNext');
+
+    assert.strictEqual(await page.isVisible('#raHeaderStep'), true,
+      'the header step must stay open when eventName is blank');
+    assert.strictEqual(await page.isVisible('.ra-card'), false,
+      'no card should render until the header is confirmed');
+    const error = await page.textContent('#raError');
+    assert.ok(error.toLowerCase().includes('event name'),
+      `expected an event-name error, got: "${error}"`);
+  });
+
+  await runTest('the header step prefills eventName/location from the template and both stay editable', async () => {
+    await page.goto(wizardUrl);
+    await page.waitForSelector('#raHeaderStep', { state: 'visible' });
+
+    assert.strictEqual(await page.inputValue('#raEventName'), FAKE_FORM.eventActivity);
+    assert.strictEqual(await page.inputValue('#raLocation'), FAKE_FORM.location);
+
+    await page.fill('#raEventName', 'Custom event name');
+    await page.fill('#raLocation', 'Custom location');
+    await page.click('#raHeaderNext');
+    await page.waitForSelector('.ra-card');
+
+    const header = await page.evaluate(() => window.riskAssessmentState.header);
+    assert.strictEqual(header.eventName, 'Custom event name');
+    assert.strictEqual(header.location, 'Custom location');
+  });
+
+  await runTest('chip updates when a score changes', async () => {
+    await startWizard(page);
 
     await page.selectOption('.ra-base-severity', '8');
     await page.selectOption('.ra-base-probability', '8');
@@ -273,8 +316,7 @@ async function main() {
   });
 
   await runTest('next and back preserve what was entered', async () => {
-    await page.goto(wizardUrl);
-    await page.waitForSelector('.ra-card');
+    await startWizard(page);
 
     await page.fill('.ra-control', 'Vetted transport only');
     await page.click('#raNext');
@@ -288,23 +330,27 @@ async function main() {
     assert.strictEqual(await page.inputValue('.ra-control'), 'Vetted transport only');
   });
 
-  await runTest('an added task is marked as added on site', async () => {
-    await page.goto(wizardUrl);
-    await page.waitForSelector('.ra-card');
+  await runTest('an added task is marked as added on site, and renders editable name/hazard inputs', async () => {
+    await startWizard(page);
 
     const before = await page.evaluate(() => window.riskAssessmentState.tasks.length);
     await page.click('#raAddTask');
+    await page.waitForSelector('.ra-task-name-input');
     const after = await page.evaluate(() => window.riskAssessmentState.tasks.length);
     assert.strictEqual(after, before + 1);
 
     const added = await page.evaluate(() =>
       window.riskAssessmentState.tasks[window.riskAssessmentState.tasks.length - 1]);
     assert.strictEqual(added.riskAssessmentRowId, null);
+    assert.strictEqual(added.taskName, '', 'a freshly added task starts unnamed');
+
+    // A template-derived task renders its name as read-only text, not an input.
+    assert.strictEqual(await page.locator('.ra-task-name-input').count(), 1);
+    assert.strictEqual(await page.locator('.ra-task-name').count(), 0);
   });
 
   await runTest('review summary counts base against residual', async () => {
-    await page.goto(wizardUrl);
-    await page.waitForSelector('.ra-card');
+    await startWizard(page);
 
     await page.click('#raReview');
     await page.waitForSelector('#raSummary');
@@ -322,8 +368,7 @@ async function main() {
   });
 
   await runTest('a skipped task is excluded from the summary', async () => {
-    await page.goto(wizardUrl);
-    await page.waitForSelector('.ra-card');
+    await startWizard(page);
 
     await page.click('#raSkip');
     await page.click('#raReview');
@@ -339,15 +384,21 @@ async function main() {
   console.log('\nrenderReview HTML escaping (Task 9 review fix)');
 
   await runTest('a task name with markup renders as text in the review list, no injection', async () => {
-    await page.goto(wizardUrl);
-    await page.waitForSelector('.ra-card');
+    await startWizard(page);
 
+    // Type into the real input rather than poking state directly, so this
+    // exercises captureCard's reading of .ra-task-name-input (Task 9), not
+    // just the escaping in the review template.
     await page.click('#raAddTask');
+    await page.waitForSelector('.ra-task-name-input');
     const rawName = '<img src=x onerror=alert(1)>Ladder & "Rigging" work';
-    await page.evaluate((name) => {
+    await page.fill('.ra-task-name-input', rawName);
+
+    const captured = await page.evaluate(() => {
       const tasks = window.riskAssessmentState.tasks;
-      tasks[tasks.length - 1].taskName = name;
-    }, rawName);
+      return tasks[tasks.length - 1].taskName;
+    });
+    assert.strictEqual(captured, '', 'state should not update until the card is captured (Next/Skip/Review)');
 
     await page.click('#raReview');
     await page.waitForSelector('#raSummary');
@@ -378,9 +429,11 @@ async function main() {
   });
 
   await runTest('a normal task name renders readably with no literal escape sequences', async () => {
-    await page.goto(wizardUrl);
-    await page.waitForSelector('.ra-card');
+    await startWizard(page);
 
+    // This is a template-derived task, which renders its name as read-only
+    // text (no input to type into) - setting state directly is the only way
+    // to drive it, unlike the added-task case above.
     await page.evaluate(() => {
       const state = window.riskAssessmentState;
       state.tasks[state.index].taskName = 'Travel & Reporting';
@@ -425,6 +478,89 @@ async function main() {
     assert.strictEqual(result.cardCount, 1, 'exactly one card, nothing extra injected');
 
     await page.unroute('**/api/RiskAssessment/getRiskAssessmentForms');
+  });
+
+  console.log('\nSubmit flow (Task 9)');
+
+  await runTest('submit posts the header, an added task, and a skipped task in the payload', async () => {
+    await page.goto(wizardUrl);
+    await page.waitForSelector('#raHeaderStep', { state: 'visible' });
+
+    await page.fill('#raEventName', 'Lux BA Deployment - Aug run');
+    await page.fill('#raLocation', 'KLI - Gate 3');
+    await page.fill('#raDepartment', 'Field Sales');
+    await page.fill('#raArea', 'North Zone');
+    await page.click('#raHeaderNext');
+    await page.waitForSelector('.ra-card');
+
+    // Task 1 of 2 (template): skip it.
+    await page.click('#raSkip');
+    await page.waitForFunction(() =>
+      document.querySelector('.ra-progress').textContent.includes('2 of'));
+
+    // Task 2 of 2 (template): leave as-is, then log an unplanned hazard.
+    await page.click('#raAddTask');
+    await page.waitForSelector('.ra-task-name-input');
+    await page.fill('.ra-task-name-input', 'Unplanned spill near loading bay');
+    await page.fill('.ra-hazard-input', 'Chemical spill');
+    await page.fill('.ra-hazard-description-input', 'Drum leaked during offload');
+
+    await page.click('#raReview');
+    await page.waitForSelector('#raSummary');
+
+    const [request] = await Promise.all([
+      page.waitForRequest('**/api/RiskAssessment/saveRiskAssessment'),
+      page.click('#raSubmit'),
+    ]);
+
+    const body = JSON.parse(request.postData());
+
+    assert.strictEqual(typeof body.siteId, 'string', 'siteId must be sent as a string');
+    assert.strictEqual(body.siteId, '1');
+    assert.ok(body.reportedBy, 'reportedBy must be populated');
+    assert.strictEqual(body.reportedBy, 'mohsin@be.com.pk');
+
+    assert.strictEqual(body.eventName, 'Lux BA Deployment - Aug run');
+    assert.strictEqual(body.location, 'KLI - Gate 3');
+    assert.strictEqual(body.department, 'Field Sales');
+    assert.strictEqual(body.area, 'North Zone');
+
+    assert.strictEqual(body.entries.length, 3, 'two template tasks plus the one added on site');
+
+    const skippedEntry = body.entries.find(e => e.taskName === 'Travel to Store');
+    assert.ok(skippedEntry, 'the skipped template task must still be present in the payload');
+    assert.strictEqual(skippedEntry.skipped, true);
+
+    const addedEntry = body.entries.find(e => e.taskName === 'Unplanned spill near loading bay');
+    assert.ok(addedEntry, 'the task added on site must be present in the payload');
+    assert.strictEqual(addedEntry.riskAssessmentRowId, null);
+    assert.strictEqual(addedEntry.hazard, 'Chemical spill');
+    assert.strictEqual(addedEntry.hazardDescription, 'Drum leaked during offload');
+    assert.strictEqual(addedEntry.skipped, false);
+
+    // A successful submit navigates away (see submitRiskAssessment) - let that
+    // settle before the next test's page.goto, or the two navigations race.
+    await page.waitForURL('**/reporting.html', { timeout: 5000 }).catch(() => {});
+  });
+
+  await runTest('submit is blocked and no navigation happens when an added task has no name', async () => {
+    await startWizard(page);
+
+    await page.click('#raAddTask');
+    await page.waitForSelector('.ra-task-name-input');
+    // Leave the name blank on purpose - this is Finding 1's failure mode.
+
+    await page.click('#raReview');
+    await page.waitForSelector('#raSummary');
+    await page.click('#raSubmit');
+
+    // No request should have gone out and the page should not have navigated
+    // away as though the submit succeeded.
+    assert.ok(page.url().includes('RiskAssessment.html'),
+      'an unnamed, non-skipped task must block submission rather than navigate away');
+
+    const error = await page.textContent('#raError');
+    assert.ok(/task 3/i.test(error), `expected the error to name the unnamed task, got: "${error}"`);
   });
 
   await browser.close();

@@ -34,6 +34,11 @@ function buildRiskSummary(tasks) {
 
 function refreshChips() {
   const task = currentTask();
+  if (!task) {
+    $('.ra-base-rating, .ra-residual-rating').text('-');
+    $('#raBaseCategory, #raResidualCategory').text('-').css('background-color', 'transparent');
+    return;
+  }
 
   const base = evaluateRisk(task.baseSeverity, task.baseProbability);
   $('.ra-base-rating').text(base ? base.rating : '-');
@@ -53,6 +58,15 @@ function captureCard() {
   const task = currentTask();
   if (!task) return;
 
+  // Only a task added on site renders these three as inputs (see
+  // createRiskAssessmentCard) - a template-derived task keeps them as
+  // read-only text, so there is nothing to read back for it.
+  if (task.riskAssessmentRowId === null) {
+    task.taskName = $('.ra-task-name-input').val() || '';
+    task.hazard = $('.ra-hazard-input').val() || '';
+    task.hazardDescription = $('.ra-hazard-description-input').val() || '';
+  }
+
   task.actOrCondition = $('.ra-actcond').val();
   task.personAtRisk = $('.ra-person').val();
   task.baseSeverity = parseInt($('.ra-base-severity').val(), 10);
@@ -64,11 +78,15 @@ function captureCard() {
 
 function renderCard() {
   const state = riskAssessmentState;
-  $('#riskAssessmentCard').html(
-    createRiskAssessmentCard(currentTask(), state.index, state.tasks.length, state.scale));
+  const task = currentTask();
 
-  $('#raBack').prop('disabled', state.index === 0);
-  $('#raNext').prop('disabled', state.index === state.tasks.length - 1);
+  $('#riskAssessmentCard').html(
+    createRiskAssessmentCard(task, state.index, state.tasks.length, state.scale));
+
+  // A template with zero rows (or every task removed) has no card to move
+  // between - disable both, rather than let Back/Next throw on a missing task.
+  $('#raBack').prop('disabled', !task || state.index === 0);
+  $('#raNext').prop('disabled', !task || state.index === state.tasks.length - 1);
   refreshChips();
 }
 
@@ -136,11 +154,25 @@ function renderReview() {
 function submitRiskAssessment() {
   captureCard();
 
-  const named = riskAssessmentState.tasks.filter(t => t.taskName && t.taskName.trim() !== '');
-  if (!named.length) {
+  if (!riskAssessmentState.tasks.length) {
     $('#raError').text('Add at least one task before submitting.');
     return;
   }
+
+  // A task the assessor never named (and never marked Skip either) would
+  // otherwise be silently dropped from the entries below - block the submit
+  // and say exactly which task, instead of navigating away as though it saved.
+  const unnamed = riskAssessmentState.tasks
+    .map((task, position) => ({ task, position }))
+    .filter(({ task }) => !task.skipped && (!task.taskName || task.taskName.trim() === ''));
+
+  if (unnamed.length) {
+    const positions = unnamed.map(({ position }) => position + 1).join(', ');
+    $('#raError').text(`Task ${positions} needs a name before you can submit - fill it in or tap Skip.`);
+    return;
+  }
+
+  $('#raError').text('');
 
   const payload = {
     riskAssessmentFormId: riskAssessmentState.formId,
@@ -152,7 +184,7 @@ function submitRiskAssessment() {
     siteId: String(getValue('siteId') || '0'),
     // The signed-in user's email is stored under userName, not email.
     reportedBy: getValue('userName'),
-    entries: named.map((task, position) => ({
+    entries: riskAssessmentState.tasks.map((task, position) => ({
       riskAssessmentRowId: task.riskAssessmentRowId,
       sortOrder: position + 1,
       taskName: task.taskName,
@@ -174,6 +206,40 @@ function submitRiskAssessment() {
   // nothing. Errors go to the shared handleRequestError, same as every other page.
   sendRequest('api/RiskAssessment/saveRiskAssessment', 'POST', JSON.stringify(payload),
     function () { window.location.href = '/Pages/reporting/reporting.html'; });
+}
+
+/**
+ * Shown once between picking a template and the first task card. eventName
+ * and location are prefilled from the template as a starting point, but the
+ * template's location/name describe the plan, not necessarily what actually
+ * happened - so both stay editable, and department/area (which the template
+ * never carries) are captured here for the first time.
+ */
+function showHeaderStep() {
+  $('#raError').text('');
+  $('#raEventName').val(riskAssessmentState.header.eventName || '');
+  $('#raLocation').val(riskAssessmentState.header.location || '');
+  $('#raDepartment').val(riskAssessmentState.header.department || '');
+  $('#raArea').val(riskAssessmentState.header.area || '');
+  $('#raHeaderStep').show();
+}
+
+function confirmHeader() {
+  const eventName = $('#raEventName').val().trim();
+  if (!eventName) {
+    $('#raError').text('Enter an event name before continuing.');
+    return;
+  }
+
+  riskAssessmentState.header.eventName = eventName;
+  riskAssessmentState.header.location = $('#raLocation').val().trim();
+  riskAssessmentState.header.department = $('#raDepartment').val().trim();
+  riskAssessmentState.header.area = $('#raArea').val().trim();
+
+  $('#raError').text('');
+  $('#raHeaderStep').hide();
+  $('#riskAssessmentCard, .ra-nav, .ra-actions').show();
+  renderCard();
 }
 
 function loadTemplate(formId) {
@@ -202,7 +268,7 @@ function loadTemplate(formId) {
         skipped: false,
       }));
 
-      renderCard();
+      showHeaderStep();
     });
   });
 }
@@ -231,10 +297,22 @@ $(function () {
   $('#raBack').on('click', () => goTo(riskAssessmentState.index - 1));
   $('#raSkip').on('click', function () {
     captureCard();
-    currentTask().skipped = true;
-    goTo(riskAssessmentState.index + 1);
+    const task = currentTask();
+    if (!task) return;
+    task.skipped = true;
+
+    // On the last card there is nowhere left to advance to card-wise - move
+    // on to Review instead of re-rendering the same card with no visible
+    // change. The skipped banner (see createRiskAssessmentCard) is what makes
+    // the skip visible when this card is revisited via Back.
+    if (riskAssessmentState.index === riskAssessmentState.tasks.length - 1) {
+      renderReview();
+    } else {
+      goTo(riskAssessmentState.index + 1);
+    }
   });
   $('#raAddTask').on('click', addTask);
   $('#raReview').on('click', renderReview);
   $('#raSubmit').on('click', submitRiskAssessment);
+  $('#raHeaderNext').on('click', confirmHeader);
 });
