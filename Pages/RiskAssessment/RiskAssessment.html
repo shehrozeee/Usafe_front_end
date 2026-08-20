@@ -22,10 +22,27 @@
          wizard body that consumes them. -->
     <script src="../../Js/RiskMatrix.js"></script>
     <script src="../../Templates/RiskAssessmentCard.js"></script>
+    <script src="../../Js/RiskAssessmentProcessor.js"></script>
 </head>
 
 <body>
-    <div id="riskAssessmentRoot"></div>
+    <div id="riskAssessmentRoot">
+        <div id="raTemplates"></div>
+        <div id="riskAssessmentCard"></div>
+        <div id="raSummary" style="display:none;"></div>
+
+        <div class="ra-nav">
+            <button id="raBack" class="btn btn-default">Back</button>
+            <button id="raSkip" class="btn btn-default">Skip</button>
+            <button id="raNext" class="btn btn-primary">Next</button>
+        </div>
+        <div class="ra-actions">
+            <button id="raAddTask" class="btn btn-default">+ Add task</button>
+            <button id="raReview" class="btn btn-default">Review</button>
+            <button id="raSubmit" class="btn btn-success" style="display:none;">Submit</button>
+        </div>
+        <div id="raError" class="text-danger"></div>
+    </div>
 </body>
 
 </html>

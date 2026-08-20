@@ -62,6 +62,63 @@ const MATRIX = {
   1:  { 1: 'VL', 2: 'VL', 4: 'L',  6: 'L',  8: 'M+', 10: 'H'  },
 };
 
+// The wizard calls the live API. Mock it so the tests exercise the wizard, not
+// the network — and so they pass identically on a laptop and in CI.
+const FAKE_SCALE = {
+  severity: [
+    { value: 1, label: 'Delay Only' },
+    { value: 2, label: 'Minor injury (FAC), minor damage' },
+    { value: 4, label: 'Lost Time Injury, illness, damage, multiple minor injuries' },
+    { value: 6, label: 'Major injury, disabling illness, major damage, multiple recordable injuries' },
+    { value: 8, label: 'Single death' },
+    { value: 10, label: 'Multiple deaths' },
+  ],
+  probability: [
+    { value: 1, label: 'Very unlikely' },
+    { value: 2, label: 'Unlikely' },
+    { value: 4, label: 'May happen' },
+    { value: 6, label: 'Likely' },
+    { value: 8, label: 'Very likely' },
+    { value: 10, label: 'Certain or imminent' },
+  ],
+};
+
+const FAKE_FORM = {
+  id: 1,
+  name: 'Lux Instore Plan',
+  location: 'KLI',
+  eventActivity: 'Female BA Deployment',
+  rows: [
+    {
+      id: 11, sortOrder: 1, taskName: 'Travel to Store', hazard: 'Road traffic accident',
+      actOrCondition: 'Condition', personAtRisk: 'BA',
+      hazardDescription: 'No transport vetting, fatigued driving',
+      baseSeverity: 6, baseProbability: 6,
+      suggestedAdditionalControl: 'Online taxi services used',
+      residualSeverity: 6, residualProbability: 2,
+    },
+    {
+      id: 12, sortOrder: 2, taskName: 'Store Reporting & Briefing', hazard: 'Slip/trip',
+      actOrCondition: 'Condition', personAtRisk: 'Worker',
+      hazardDescription: 'Uninspected floor, exposed cables',
+      baseSeverity: 2, baseProbability: 6,
+      suggestedAdditionalControl: 'Pre-shift housekeeping check',
+      residualSeverity: 2, residualProbability: 2,
+    },
+  ],
+};
+
+async function mockRiskApi(page) {
+  await page.route('**/api/RiskAssessment/getRiskScale', route =>
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify(FAKE_SCALE) }));
+
+  await page.route('**/api/RiskAssessment/getRiskAssessmentForm*', route =>
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify(FAKE_FORM) }));
+
+  await page.route('**/api/RiskAssessment/saveRiskAssessment', route =>
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify({ id: 99 }) }));
+}
+
 async function main() {
   const browser = await chromium.launch();
   const context = await browser.newContext();
@@ -192,6 +249,91 @@ async function main() {
     assert.strictEqual(result.severityValue, '2');
     assert.strictEqual(result.probabilityValue, '1');
     assert.strictEqual(result.severityOptionCount, 2);
+  });
+
+  console.log('\nRisk assessment wizard');
+
+  await mockRiskApi(page);
+  const wizardUrl = `${PAGE_URL}?formId=1`;
+
+  await runTest('chip updates when a score changes', async () => {
+    await page.goto(wizardUrl);
+    await page.waitForSelector('.ra-card');
+
+    await page.selectOption('.ra-base-severity', '8');
+    await page.selectOption('.ra-base-probability', '8');
+    assert.strictEqual(await page.textContent('.ra-base-rating'), '64');
+    assert.strictEqual(await page.textContent('#raBaseCategory'), 'VH');
+
+    // Same task, far rarer: the rating collapses to 8 but the category stays
+    // above L, which is the whole reason the matrix is a lookup.
+    await page.selectOption('.ra-base-probability', '1');
+    assert.strictEqual(await page.textContent('.ra-base-rating'), '8');
+    assert.strictEqual(await page.textContent('#raBaseCategory'), 'M+');
+  });
+
+  await runTest('next and back preserve what was entered', async () => {
+    await page.goto(wizardUrl);
+    await page.waitForSelector('.ra-card');
+
+    await page.fill('.ra-control', 'Vetted transport only');
+    await page.click('#raNext');
+    await page.waitForFunction(() =>
+      document.querySelector('.ra-progress').textContent.includes('2 of'));
+
+    await page.click('#raBack');
+    await page.waitForFunction(() =>
+      document.querySelector('.ra-progress').textContent.includes('1 of'));
+
+    assert.strictEqual(await page.inputValue('.ra-control'), 'Vetted transport only');
+  });
+
+  await runTest('an added task is marked as added on site', async () => {
+    await page.goto(wizardUrl);
+    await page.waitForSelector('.ra-card');
+
+    const before = await page.evaluate(() => window.riskAssessmentState.tasks.length);
+    await page.click('#raAddTask');
+    const after = await page.evaluate(() => window.riskAssessmentState.tasks.length);
+    assert.strictEqual(after, before + 1);
+
+    const added = await page.evaluate(() =>
+      window.riskAssessmentState.tasks[window.riskAssessmentState.tasks.length - 1]);
+    assert.strictEqual(added.riskAssessmentRowId, null);
+  });
+
+  await runTest('review summary counts base against residual', async () => {
+    await page.goto(wizardUrl);
+    await page.waitForSelector('.ra-card');
+
+    await page.click('#raReview');
+    await page.waitForSelector('#raSummary');
+
+    const summary = await page.evaluate(() =>
+      window.buildRiskSummary(window.riskAssessmentState.tasks));
+
+    const baseTotal = Object.values(summary.base).reduce((a, b) => a + b, 0);
+    const residualTotal = Object.values(summary.residual).reduce((a, b) => a + b, 0);
+
+    assert.strictEqual(baseTotal, residualTotal);
+    assert.strictEqual(baseTotal, 2);
+    assert.strictEqual(summary.base['H'], 1);        // Travel to Store, S=6 P=6
+    assert.strictEqual(summary.residual['M'], 1);    // same task, S=6 P=2
+  });
+
+  await runTest('a skipped task is excluded from the summary', async () => {
+    await page.goto(wizardUrl);
+    await page.waitForSelector('.ra-card');
+
+    await page.click('#raSkip');
+    await page.click('#raReview');
+    await page.waitForSelector('#raSummary');
+
+    const summary = await page.evaluate(() =>
+      window.buildRiskSummary(window.riskAssessmentState.tasks));
+    const baseTotal = Object.values(summary.base).reduce((a, b) => a + b, 0);
+
+    assert.strictEqual(baseTotal, 1);
   });
 
   await browser.close();
