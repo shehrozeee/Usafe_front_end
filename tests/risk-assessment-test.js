@@ -671,6 +671,60 @@ async function main() {
     await page.waitForURL('**/reporting.html', { timeout: 5000 }).catch(() => {});
   });
 
+  await runTest('a failed photo upload leaves Submit usable, clears the stuck indicator, and keeps wizard state intact', async () => {
+    await goToReview(page);
+
+    // Something already on screen before the failed upload - if the wizard
+    // state got wiped by the failure, this would be gone afterwards.
+    await page.evaluate(() => {
+      window.riskAssessmentState.tasks[0].additionalControl = 'Vetted transport only';
+    });
+    const tasksBefore = await page.evaluate(() => JSON.stringify(window.riskAssessmentState.tasks));
+
+    await page.route('**/api/RiskAssessment/uploadFiles', route => route.fulfill({
+      status: 500,
+      contentType: 'application/json',
+      body: JSON.stringify({ message: 'Upload failed on the server' }),
+    }));
+    await page.route('**/api/diagnostics/clientlog', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }));
+
+    await page.setInputFiles('#raPhotoInput', fakePhoto('storm-photo.jpg'));
+
+    // The shared error handler puts up its own dialog - dismiss it like a real
+    // user would, same as the assessor will.
+    await page.waitForSelector('.swal2-confirm', { state: 'visible' });
+    await page.click('.swal2-confirm');
+
+    // Submit must be usable again, not left stuck disabled from before the upload.
+    await page.waitForFunction(() => document.getElementById('raSubmit').disabled === false);
+
+    // No stuck "Uploading..." indicator.
+    const statusText = await page.textContent('#raPhotoStatus');
+    assert.ok(!/uploading/i.test(statusText),
+      `the status text must not still say Uploading, got: "${statusText}"`);
+
+    // The failed upload must not have added a photo, or altered anything else
+    // in the wizard's state - losing a completed assessment to a photo that
+    // would not upload is exactly what this guards against.
+    const tasksAfter = await page.evaluate(() => JSON.stringify(window.riskAssessmentState.tasks));
+    assert.strictEqual(tasksAfter, tasksBefore, 'a failed upload must not alter or wipe the wizard state');
+    assert.strictEqual(await page.evaluate(() => window.riskAssessmentState.photos.length), 0);
+
+    // And the obvious recovery path must actually work: submit without the photo.
+    await page.unroute('**/api/RiskAssessment/uploadFiles');
+    const [request] = await Promise.all([
+      page.waitForRequest('**/api/RiskAssessment/saveRiskAssessment'),
+      page.click('#raSubmit'),
+    ]);
+    const body = JSON.parse(request.postData());
+    assert.strictEqual(Object.prototype.hasOwnProperty.call(body, 'files'), false,
+      'submitting without the photo must not send a bogus files value');
+
+    await page.waitForURL('**/reporting.html', { timeout: 5000 }).catch(() => {});
+    await page.unroute('**/api/diagnostics/clientlog');
+  });
+
   await runTest('submitting with no photos still works and sends no bogus files value', async () => {
     await goToReview(page);
 

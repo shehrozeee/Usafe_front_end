@@ -384,6 +384,30 @@ $(function () {
   $('#raSubmit').on('click', submitRiskAssessment);
   $('#raHeaderNext').on('click', confirmHeader);
 
+  // A failed upload must never leave the assessor stuck. sendRequestWithFiles
+  // (Helpers/HttpHandler.js:168-186, shared with every other page - not ours
+  // to change) has no complete/always hook of its own; every failure routes to
+  // the shared handleRequestError, which re-enables every button on the page
+  // and puts up its own error dialog - but it knows nothing about this page's
+  // own "Uploading..." status text, which would otherwise sit there forever.
+  // jQuery fires the ajaxComplete event for every request, success or failure,
+  // unless the caller passes global:false (sendRequestWithFiles does not), so
+  // that is the one hook available here without touching the shared helper.
+  // Scoped to the upload endpoint by URL so it never reacts to anything else.
+  $(document).on('ajaxComplete.raPhotoUpload', function (event, xhr, settings) {
+    if (!settings || (settings.url || '').indexOf('api/RiskAssessment/uploadFiles') === -1) return;
+    if (xhr.status >= 200 && xhr.status < 300) return; // the success callback above already handled this
+
+    // By the time this runs, handleRequestError has already re-enabled every
+    // button and shown its own dialog - riskAssessmentState.tasks was never
+    // touched by the failed upload, so the assessment itself is untouched.
+    // Make the recovery visible and point at the path that keeps the work:
+    // submitting without this photo beats losing everything to a reload.
+    $('#raSubmit').prop('disabled', false);
+    $('#raPhotoStatus').addClass('text-danger')
+      .text('Photo upload failed. Your answers are safe - retry, or Submit without this photo.');
+  });
+
   $('#raPhotoAdd').on('click', () => $('#raPhotoInput').trigger('click'));
   $('#raPhotoInput').on('change', function () { handlePhotoSelect(this); });
   $('#raPhotoList').on('click', '.ra-photo-remove', function () {
