@@ -35,6 +35,28 @@ function riskCategoryChip(id) {
 }
 
 /**
+ * The photo list on the review screen. Photos attach to the assessment as a
+ * whole (see submitRiskAssessment), not to a task, so this only needs the
+ * flat list held on riskAssessmentState.photos - each entry
+ * { key, name }, where key is what the server returned from uploadFiles and
+ * name is the original filename, kept only for display.
+ */
+function riskAssessmentPhotoList(photos) {
+  if (!photos || !photos.length) {
+    return '<li class="ra-photo-empty text-muted">No photos attached yet.</li>';
+  }
+
+  return photos.map(function (photo, index) {
+    return `
+      <li class="ra-photo-item">
+        <span class="ra-photo-icon"><i class="fa fa-image"></i></span>
+        <span class="ra-photo-name">${escapeHtml(photo.name)}</span>
+        <button type="button" class="ra-photo-remove" data-index="${index}" aria-label="Remove photo">&times;</button>
+      </li>`;
+  }).join('');
+}
+
+/**
  * @param {object} task   the row being assessed
  * @param {number} index  zero-based position
  * @param {number} total  number of tasks

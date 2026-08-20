@@ -59,6 +59,25 @@
         <div id="riskAssessmentCard" style="display:none;"></div>
         <div id="raSummary" style="display:none;"></div>
 
+        <!-- Photos attach to the assessment as a whole, not to a single task, so
+             this lives on the review screen rather than on each task card - the
+             point the assessor has already stepped back to look at the whole
+             assessment before submitting. Shown/hidden together with #raSummary
+             from renderReview() in Js/RiskAssessmentProcessor.js. -->
+        <div id="raPhotoSection" class="container" style="display:none; margin:20px 0; padding:16px; background:#f9fafb; border-radius:12px; border:1px dashed #d1d5db;">
+            <div style="font-size:13px; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">
+                Attach Photos (Optional)
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <button type="button" id="raPhotoAdd" class="btn btn-default" style="margin:0;">
+                    <i class="fa fa-camera"></i> Choose Photos
+                </button>
+                <input type="file" id="raPhotoInput" accept="image/*" multiple capture="environment" style="display:none;">
+                <span id="raPhotoStatus" style="font-size:12px; color:#6b7280;"></span>
+            </div>
+            <ul id="raPhotoList" class="ra-photo-list" style="list-style:none; padding:0; margin:10px 0 0;"></ul>
+        </div>
+
         <div class="ra-nav" style="display:none;">
             <button id="raBack" class="btn btn-default">Back</button>
             <button id="raSkip" class="btn btn-default">Skip</button>

@@ -117,6 +117,22 @@ async function mockRiskApi(page) {
 
   await page.route('**/api/RiskAssessment/saveRiskAssessment', route =>
     route.fulfill({ contentType: 'application/json', body: JSON.stringify({ id: 99 }) }));
+
+  // Deliberately mirrors api/checklist/uploadFiles (see task brief) - one key
+  // back per file posted, in order, so tests can predict what should land in
+  // riskAssessmentState.photos / the submit payload.
+  await page.route('**/api/RiskAssessment/uploadFiles', async route => {
+    const body = route.request().postData() || '';
+    const fileCount = (body.match(/name="files"/g) || []).length;
+    const urls = Array.from({ length: fileCount }, (_, i) => `ra/2026/08/uploaded-${i}.jpg`);
+    await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ status: 200, urls }) });
+  });
+}
+
+// A minimal in-browser "image" - the upload endpoint is mocked, so the bytes
+// never actually have to decode as one.
+function fakePhoto(name) {
+  return { name, mimeType: 'image/jpeg', buffer: Buffer.from('fake-image-bytes') };
 }
 
 async function main() {
@@ -561,6 +577,113 @@ async function main() {
 
     const error = await page.textContent('#raError');
     assert.ok(/task 3/i.test(error), `expected the error to name the unnamed task, got: "${error}"`);
+  });
+
+  console.log('\nPhoto attachments (Task 14)');
+
+  // Photos attach to the assessment as a whole, so every one of these lands on
+  // the review screen (see renderReview in Js/RiskAssessmentProcessor.js).
+  async function goToReview(page) {
+    await startWizard(page);
+    await page.click('#raSkip');
+    await page.waitForFunction(() =>
+      document.querySelector('.ra-progress').textContent.includes('2 of'));
+    await page.click('#raReview');
+    await page.waitForSelector('#raSummary');
+    await page.waitForSelector('#raPhotoSection', { state: 'visible' });
+  }
+
+  await runTest('attaching a photo posts it to the upload endpoint', async () => {
+    await goToReview(page);
+
+    const [request] = await Promise.all([
+      page.waitForRequest('**/api/RiskAssessment/uploadFiles'),
+      page.setInputFiles('#raPhotoInput', fakePhoto('loading-bay.jpg')),
+    ]);
+
+    assert.strictEqual(request.method(), 'POST');
+    const body = request.postData() || '';
+    assert.ok(body.includes('name="files"'), 'the multipart field must be named "files", matching api/checklist/uploadFiles');
+    assert.ok(body.includes('loading-bay.jpg'), 'the original filename should be present in the multipart body');
+
+    await page.waitForFunction(() => window.riskAssessmentState.photos.length === 1);
+    const photos = await page.evaluate(() => window.riskAssessmentState.photos);
+    assert.strictEqual(photos[0].key, 'ra/2026/08/uploaded-0.jpg');
+    assert.strictEqual(photos[0].name, 'loading-bay.jpg');
+
+    // Visible confirmation, not just state - the assessor has to be able to
+    // see what got attached.
+    const listText = await page.textContent('#raPhotoList');
+    assert.ok(listText.includes('loading-bay.jpg'), 'the attached photo must be visible in the photo list');
+  });
+
+  await runTest('the returned keys appear in the files field of the submit payload', async () => {
+    await goToReview(page);
+
+    await Promise.all([
+      page.waitForRequest('**/api/RiskAssessment/uploadFiles'),
+      page.setInputFiles('#raPhotoInput', [fakePhoto('spill.jpg'), fakePhoto('drum.jpg')]),
+    ]);
+    await page.waitForFunction(() => window.riskAssessmentState.photos.length === 2);
+
+    const [request] = await Promise.all([
+      page.waitForRequest('**/api/RiskAssessment/saveRiskAssessment'),
+      page.click('#raSubmit'),
+    ]);
+
+    const body = JSON.parse(request.postData());
+    assert.strictEqual(typeof body.files, 'string', 'files must be sent as a JSON string, same shape as CheckList.Files');
+    const files = JSON.parse(body.files);
+    assert.deepStrictEqual(files, ['ra/2026/08/uploaded-0.jpg', 'ra/2026/08/uploaded-1.jpg']);
+
+    await page.waitForURL('**/reporting.html', { timeout: 5000 }).catch(() => {});
+  });
+
+  await runTest('a user can remove an attached photo before submitting', async () => {
+    await goToReview(page);
+
+    await Promise.all([
+      page.waitForRequest('**/api/RiskAssessment/uploadFiles'),
+      page.setInputFiles('#raPhotoInput', [fakePhoto('one.jpg'), fakePhoto('two.jpg')]),
+    ]);
+    await page.waitForFunction(() => window.riskAssessmentState.photos.length === 2);
+
+    // Remove the first attached photo via its own remove control, not by
+    // poking state directly - this exercises the delegated click handler.
+    await page.click('.ra-photo-remove[data-index="0"]');
+    await page.waitForFunction(() => window.riskAssessmentState.photos.length === 1);
+
+    const remaining = await page.evaluate(() => window.riskAssessmentState.photos);
+    assert.strictEqual(remaining[0].name, 'two.jpg', 'removing index 0 must leave the second photo, not the first');
+
+    const listText = await page.textContent('#raPhotoList');
+    assert.ok(!listText.includes('one.jpg'), 'the removed photo must disappear from the visible list');
+    assert.ok(listText.includes('two.jpg'), 'the remaining photo must still be visible');
+
+    const [request] = await Promise.all([
+      page.waitForRequest('**/api/RiskAssessment/saveRiskAssessment'),
+      page.click('#raSubmit'),
+    ]);
+    const body = JSON.parse(request.postData());
+    assert.deepStrictEqual(JSON.parse(body.files), ['ra/2026/08/uploaded-1.jpg'],
+      'the submit payload must reflect the removal, carrying only the remaining photo\'s key');
+
+    await page.waitForURL('**/reporting.html', { timeout: 5000 }).catch(() => {});
+  });
+
+  await runTest('submitting with no photos still works and sends no bogus files value', async () => {
+    await goToReview(page);
+
+    const [request] = await Promise.all([
+      page.waitForRequest('**/api/RiskAssessment/saveRiskAssessment'),
+      page.click('#raSubmit'),
+    ]);
+
+    const body = JSON.parse(request.postData());
+    assert.strictEqual(Object.prototype.hasOwnProperty.call(body, 'files'), false,
+      'files must be entirely absent from the payload when nothing was attached, not "[]" or null');
+
+    await page.waitForURL('**/reporting.html', { timeout: 5000 }).catch(() => {});
   });
 
   await browser.close();

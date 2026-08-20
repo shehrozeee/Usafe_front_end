@@ -11,6 +11,11 @@ var riskAssessmentState = {
   scale: { severity: [], probability: [] },
   tasks: [],
   index: 0,
+  // Photos attach to the assessment as a whole, not per task - see
+  // handlePhotoSelect / renderPhotoList. Each entry is
+  // { key, name }: key is what uploadFiles returned (what gets sent back
+  // to saveRiskAssessment), name is the original filename, kept for display only.
+  photos: [],
 };
 
 function currentTask() {
@@ -117,6 +122,58 @@ function addTask() {
   renderCard();
 }
 
+function renderPhotoList() {
+  $('#raPhotoList').html(riskAssessmentPhotoList(riskAssessmentState.photos));
+}
+
+/**
+ * Uploads every file picked in one go, the same shape as the checklist
+ * wizard's handleChecklistPhotoSelect (Js/GenericQuestioneerProcessor.js) -
+ * mirrored because the server endpoint is a deliberate mirror of
+ * api/checklist/uploadFiles. Unlike that precedent, this goes through
+ * sendRequestWithFiles rather than a bespoke $.ajax, so a failed upload runs
+ * through the shared handleRequestError (session-expiry handling, the error
+ * dialog, server-side logging) instead of a second, local error path -
+ * and critically, the failure never adds anything to
+ * riskAssessmentState.photos, so a failed upload cannot end up silently
+ * submitted as if it succeeded.
+ */
+function handlePhotoSelect(input) {
+  const files = input.files;
+  if (!files || !files.length) return;
+
+  const names = Array.from(files).map(f => f.name);
+  const formData = new FormData();
+  for (let i = 0; i < files.length; i++) {
+    formData.append('files', files[i]);
+  }
+
+  $('#raPhotoStatus').removeClass('text-danger').text(`Uploading ${files.length} photo(s)...`);
+  // Disabled for the duration of the upload so a submit cannot go out while
+  // the keys it would need are still in flight.
+  $('#raSubmit').prop('disabled', true);
+
+  sendRequestWithFiles('api/RiskAssessment/uploadFiles', 'POST', formData, function (result) {
+    $('#raSubmit').prop('disabled', false);
+
+    if (result && result.status === 200 && result.urls) {
+      result.urls.forEach(function (key, i) {
+        riskAssessmentState.photos.push({ key: key, name: names[i] || key });
+      });
+      $('#raPhotoStatus').text(`${riskAssessmentState.photos.length} photo(s) attached`);
+      renderPhotoList();
+    } else {
+      // Not an HTTP failure (that goes through handleRequestError below) -
+      // the server answered 200 without the shape we expect. Say so and
+      // leave riskAssessmentState.photos untouched.
+      $('#raPhotoStatus').addClass('text-danger').text('Upload failed - photos were not attached.');
+    }
+  });
+
+  // Reset the input so re-picking the same file(s) still fires change.
+  input.value = '';
+}
+
 function renderReview() {
   captureCard();
   const summary = buildRiskSummary(riskAssessmentState.tasks);
@@ -147,6 +204,9 @@ function renderReview() {
     </table>
     <ul class="ra-review-list">${rows}</ul>
   `).show();
+
+  $('#raPhotoSection').show();
+  renderPhotoList();
 
   $('#raSubmit').show();
 }
@@ -200,6 +260,14 @@ function submitRiskAssessment() {
       skipped: !!task.skipped,
     })),
   };
+
+  // Only sent when there is at least one photo - CheckList.Files is a JSON
+  // string array, and an empty/absent field reads more cleanly on the server
+  // than a stringified empty array would ("[]" is still a value; omitting the
+  // key is not).
+  if (riskAssessmentState.photos.length) {
+    payload.files = JSON.stringify(riskAssessmentState.photos.map(p => p.key));
+  }
 
   // sendRequest sets contentType application/json, so the body has to be a
   // string - handing jQuery an object here form-encodes it and the API sees
@@ -315,4 +383,12 @@ $(function () {
   $('#raReview').on('click', renderReview);
   $('#raSubmit').on('click', submitRiskAssessment);
   $('#raHeaderNext').on('click', confirmHeader);
+
+  $('#raPhotoAdd').on('click', () => $('#raPhotoInput').trigger('click'));
+  $('#raPhotoInput').on('change', function () { handlePhotoSelect(this); });
+  $('#raPhotoList').on('click', '.ra-photo-remove', function () {
+    const index = parseInt($(this).data('index'), 10);
+    riskAssessmentState.photos.splice(index, 1);
+    renderPhotoList();
+  });
 });
