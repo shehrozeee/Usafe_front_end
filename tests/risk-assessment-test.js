@@ -101,6 +101,99 @@ async function main() {
     assert.strictEqual(rare.category, 'M+');
   });
 
+  console.log('\nwindow bindings (classic-script const vs var regression)');
+
+  await runTest('RISK_SCALE_VALUES is reachable as a window property', async () => {
+    const value = await page.evaluate(() => window.RISK_SCALE_VALUES);
+    assert.deepStrictEqual(value, [1, 2, 4, 6, 8, 10]);
+  });
+
+  await runTest('RISK_CATEGORY_COLOUR is reachable as a window property', async () => {
+    const value = await page.evaluate(() => window.RISK_CATEGORY_COLOUR);
+    assert.deepStrictEqual(value, {
+      VL: '#c6efce',
+      L: '#d9ead3',
+      M: '#ffeb9c',
+      'M+': '#ffd966',
+      H: '#f4b183',
+      VH: '#ff7c80',
+    });
+  });
+
+  console.log('\nRiskAssessmentCard HTML escaping');
+
+  const SCALE = {
+    severity: [{ value: 1, label: 'Negligible' }, { value: 2, label: 'Minor' }],
+    probability: [{ value: 1, label: 'Rare' }, { value: 2, label: 'Unlikely' }],
+  };
+
+  await runTest('a double quote in personAtRisk does not break out of the value attribute', async () => {
+    const task = {
+      taskName: 'Loading dock',
+      personAtRisk: 'Forklift driver " onmouseover="alert(1)',
+    };
+
+    const inputValue = await page.evaluate(([t, s]) => {
+      const html = window.createRiskAssessmentCard(t, 0, 1, s);
+      const root = document.getElementById('riskAssessmentRoot');
+      root.innerHTML = html;
+      const input = root.querySelector('.ra-person');
+      return {
+        value: input.value,
+        onmouseover: input.getAttribute('onmouseover'),
+        extraInputs: root.querySelectorAll('.ra-person').length,
+      };
+    }, [task, SCALE]);
+
+    assert.strictEqual(inputValue.value, 'Forklift driver " onmouseover="alert(1)');
+    assert.strictEqual(inputValue.onmouseover, null,
+      'the quote must not have terminated the value attribute early');
+    assert.strictEqual(inputValue.extraInputs, 1,
+      'the quote must not have injected a stray element');
+  });
+
+  await runTest('angle brackets in taskName render as visible text, not markup', async () => {
+    const task = {
+      taskName: '<img src=x onerror=alert(1)>Ladder work',
+      personAtRisk: 'Rigger',
+    };
+
+    const result = await page.evaluate(([t, s]) => {
+      const html = window.createRiskAssessmentCard(t, 0, 1, s);
+      const root = document.getElementById('riskAssessmentRoot');
+      root.innerHTML = html;
+      const heading = root.querySelector('.ra-task-name');
+      return {
+        text: heading.textContent,
+        hasImg: root.querySelectorAll('.ra-task-name img').length,
+      };
+    }, [task, SCALE]);
+
+    assert.strictEqual(result.text, '<img src=x onerror=alert(1)>Ladder work');
+    assert.strictEqual(result.hasImg, 0, 'the angle brackets must not have created an <img> element');
+  });
+
+  await runTest('scale option values and selected markup still work after escaping', async () => {
+    const task = { taskName: 'Normal task', personAtRisk: 'Normal person', baseSeverity: 2, baseProbability: 1 };
+
+    const result = await page.evaluate(([t, s]) => {
+      const html = window.createRiskAssessmentCard(t, 0, 1, s);
+      const root = document.getElementById('riskAssessmentRoot');
+      root.innerHTML = html;
+      const severitySelect = root.querySelector('.ra-base-severity');
+      const probabilitySelect = root.querySelector('.ra-base-probability');
+      return {
+        severityValue: severitySelect.value,
+        probabilityValue: probabilitySelect.value,
+        severityOptionCount: severitySelect.querySelectorAll('option').length,
+      };
+    }, [task, SCALE]);
+
+    assert.strictEqual(result.severityValue, '2');
+    assert.strictEqual(result.probabilityValue, '1');
+    assert.strictEqual(result.severityOptionCount, 2);
+  });
+
   await browser.close();
 
   const failed = results.filter(r => !r.pass).length;

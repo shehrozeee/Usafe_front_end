@@ -2,6 +2,27 @@
 // source workbook is twenty columns wide, which no phone can show; the wizard
 // trades width for depth and shows one task at a time.
 
+// No repo-wide HTML-escaping helper exists today, so it is defined here.
+// Task 9 re-renders this card on every wizard Back/Next, reading the
+// assessor's own typed values back out and feeding them through this same
+// template — so any user-entered field (taskName, hazard,
+// hazardDescription, additionalControl, personAtRisk, ...) MUST be routed
+// through this before landing in the HTML string, whether it lands in an
+// element body or inside an attribute value. Escape `&` first so the
+// entities inserted for the other characters don't themselves get escaped.
+// Values this file generates itself (numeric scale values, the `selected`
+// keyword, data-index) are not user data and must NOT be passed through
+// this - see riskScaleOptions below.
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function riskScaleOptions(options, selected) {
   return options.map(function (option) {
     const isSelected = option.value === selected ? 'selected' : '';
@@ -24,9 +45,9 @@ function createRiskAssessmentCard(task, index, total, scale) {
     <div class="ra-card" data-index="${index}">
       <div class="ra-progress">Task ${index + 1} of ${total}</div>
 
-      <h3 class="ra-task-name">${task.taskName || ''}</h3>
-      ${task.hazard ? `<p class="ra-hazard"><strong>Hazard:</strong> ${task.hazard}</p>` : ''}
-      ${task.hazardDescription ? `<p class="ra-cause">${task.hazardDescription}</p>` : ''}
+      <h3 class="ra-task-name">${escapeHtml(task.taskName)}</h3>
+      ${task.hazard ? `<p class="ra-hazard"><strong>Hazard:</strong> ${escapeHtml(task.hazard)}</p>` : ''}
+      ${task.hazardDescription ? `<p class="ra-cause">${escapeHtml(task.hazardDescription)}</p>` : ''}
 
       <div class="form-group">
         <label>Act / Condition</label>
@@ -38,7 +59,7 @@ function createRiskAssessmentCard(task, index, total, scale) {
 
       <div class="form-group">
         <label>Person at risk</label>
-        <input type="text" class="form-control ra-person" value="${task.personAtRisk || ''}">
+        <input type="text" class="form-control ra-person" value="${escapeHtml(task.personAtRisk)}">
       </div>
 
       <div class="ra-section">
@@ -63,7 +84,7 @@ function createRiskAssessmentCard(task, index, total, scale) {
 
       <div class="form-group">
         <label>Additional Control</label>
-        <textarea class="form-control ra-control" rows="3">${task.additionalControl || task.suggestedAdditionalControl || ''}</textarea>
+        <textarea class="form-control ra-control" rows="3">${escapeHtml(task.additionalControl || task.suggestedAdditionalControl)}</textarea>
       </div>
 
       <div class="ra-section">

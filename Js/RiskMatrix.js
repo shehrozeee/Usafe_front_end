@@ -13,10 +13,19 @@
 //
 // See docs/superpowers/specs/2026-08-20-risk-assessment-design.md
 
-const RISK_SCALE_VALUES = [1, 2, 4, 6, 8, 10];
+// var, not const: this is a top-level declaration in a classic (non-module)
+// script. A top-level `const`/`let` only creates a script-scope lexical
+// binding, not a `window` property, so `window.RISK_SCALE_VALUES` would be
+// undefined even though the bare identifier resolves fine within this file
+// and to other classic scripts on the same page. `var` is the one declarator
+// that actually attaches to `window` here — do not "modernise" this to const.
+var RISK_SCALE_VALUES = [1, 2, 4, 6, 8, 10];
 
 // Keyed by probability, then severity.
-const RISK_MATRIX = {
+// var for the same reason as RISK_SCALE_VALUES above: top-level const/let in a
+// classic script does not become a window property, and callers reach for
+// window.RISK_MATRIX the same way they reach for window.evaluateRisk.
+var RISK_MATRIX = {
   10: { 1: 'L',  2: 'H',  4: 'VH', 6: 'VH', 8: 'VH', 10: 'VH' },
   8:  { 1: 'L',  2: 'M+', 4: 'H',  6: 'VH', 8: 'VH', 10: 'VH' },
   6:  { 1: 'L',  2: 'M',  4: 'M+', 6: 'H',  8: 'VH', 10: 'VH' },
@@ -25,7 +34,10 @@ const RISK_MATRIX = {
   1:  { 1: 'VL', 2: 'VL', 4: 'L',  6: 'L',  8: 'M+', 10: 'H'  },
 };
 
-const RISK_CATEGORY_COLOUR = {
+// var for the same reason as RISK_SCALE_VALUES above: top-level const/let in a
+// classic script does not become a window property, and this map is looked up
+// as window.RISK_CATEGORY_COLOUR by other scripts.
+var RISK_CATEGORY_COLOUR = {
   'VL': '#c6efce',
   'L':  '#d9ead3',
   'M':  '#ffeb9c',
