@@ -686,6 +686,142 @@ async function main() {
     await page.waitForURL('**/reporting.html', { timeout: 5000 }).catch(() => {});
   });
 
+  console.log('\nReport details page — risk assessment branch (Task 15)');
+
+  // fetchTaskDetails' "RiskAssessment" case (ChangeFormController.GetTaskDetails)
+  // returns this exact shape, camelCase on the wire same as every other branch
+  // on this page (see data.checkListData above).
+  const RD_PAGE_URL = `${BASE_URL}/Pages/reportDeatails/reportDetails.html`;
+
+  function fakeRiskAssessmentDetails(overrides) {
+    return Object.assign({
+      formName: 'Lux Instore Plan',
+      eventName: 'Female BA Deployment',
+      location: 'KLI',
+      department: 'Field Sales',
+      area: 'North Zone',
+      status: 'Pending',
+      createdDate: '2026-08-15T10:00:00Z',
+      reportedBy: 'mohsin@be.com.pk',
+      files: null,
+      riskAssessmentData: [
+        {
+          id: 1, sortOrder: 1, taskName: 'Travel to Store', hazard: 'Road traffic accident',
+          actOrCondition: 'Condition', personAtRisk: 'BA', hazardDescription: 'No transport vetting',
+          baseSeverity: 6, baseProbability: 6, baseRating: 36, baseCategory: 'H',
+          additionalControl: 'Online taxi services used',
+          residualSeverity: 6, residualProbability: 2, residualRating: 12, residualCategory: 'M',
+          skipped: false,
+        },
+        {
+          id: 2, sortOrder: 2, taskName: 'Store Reporting & Briefing', hazard: 'Slip/trip',
+          actOrCondition: 'Condition', personAtRisk: 'Worker', hazardDescription: null,
+          // A skipped entry is never scored (RiskAssessmentController.SaveRiskAssessment
+          // leaves these at their non-nullable defaults - 0 for the ints, "" for the
+          // category strings - rather than null), which is exactly why the page must
+          // key off `skipped`, not off these values being falsy/absent.
+          baseSeverity: 0, baseProbability: 0, baseRating: 0, baseCategory: '',
+          additionalControl: null,
+          residualSeverity: 0, residualProbability: 0, residualRating: 0, residualCategory: '',
+          skipped: true,
+        },
+      ],
+    }, overrides || {});
+  }
+
+  async function goToRiskAssessmentDetails(page, details) {
+    await page.route('**/api/ChangeForm/fetchTaskDetails*', route =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify(details) }));
+    await page.goto(`${RD_PAGE_URL}?id=1&entity=RiskAssessment`);
+    await page.waitForSelector('#detailsDiv .rd-ra-task');
+    await page.unroute('**/api/ChangeForm/fetchTaskDetails*');
+  }
+
+  await runTest('a risk assessment detail renders its tasks with their categories', async () => {
+    await goToRiskAssessmentDetails(page, fakeRiskAssessmentDetails());
+
+    const taskCount = await page.locator('.rd-ra-task').count();
+    assert.strictEqual(taskCount, 2, 'both the scored and the skipped task must render');
+
+    const baseCategories = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('.rd-ra-base-category')).map(el => el.textContent.trim()));
+    assert.deepStrictEqual(baseCategories, ['H'], 'only the scored task shows a base category chip');
+
+    const residualCategories = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('.rd-ra-residual-category')).map(el => el.textContent.trim()));
+    assert.deepStrictEqual(residualCategories, ['M']);
+
+    // The chip colour must come from RISK_CATEGORY_COLOUR (Js/RiskMatrix.js),
+    // not a second, hardcoded colour map on this page.
+    const actualCss = await page.evaluate(() =>
+      document.querySelector('.rd-ra-base-category').style.backgroundColor);
+    const expectedCss = await page.evaluate((hex) => {
+      const probe = document.createElement('div');
+      probe.style.backgroundColor = hex;
+      document.body.appendChild(probe);
+      const rgb = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return rgb;
+    }, await page.evaluate(() => window.RISK_CATEGORY_COLOUR['H']));
+    assert.strictEqual(actualCss, expectedCss);
+  });
+
+  await runTest('a skipped task is visibly marked as skipped rather than showing zeros', async () => {
+    await goToRiskAssessmentDetails(page, fakeRiskAssessmentDetails());
+
+    const skipped = await page.evaluate(() => {
+      const row = document.querySelector('.rd-ra-task-skipped');
+      return {
+        exists: !!row,
+        badgeText: row ? row.querySelector('.rd-ra-skip-badge').textContent.trim() : null,
+        rowText: row ? row.textContent : '',
+        chipCount: row ? row.querySelectorAll('.rd-ra-category').length : -1,
+      };
+    });
+
+    assert.ok(skipped.exists, 'the skipped task must render with its own marker element');
+    assert.strictEqual(skipped.badgeText, 'SKIPPED');
+    assert.ok(!/\b0\b/.test(skipped.rowText), 'a skipped task must never show a bare 0 for its score');
+    assert.strictEqual(skipped.rowText.indexOf('undefined'), -1,
+      'null scores must not leak the literal word "undefined"');
+    assert.strictEqual(skipped.chipCount, 0,
+      'a skipped task has nothing to grade, so no category chip should render for it');
+  });
+
+  await runTest('a task name with angle brackets and a double quote renders as visible text, no injected markup', async () => {
+    const maliciousName = '<img src=x onerror=alert(1)>Ladder & "Rigging" work';
+    const details = fakeRiskAssessmentDetails({
+      riskAssessmentData: [
+        {
+          id: 3, sortOrder: 1, taskName: maliciousName, hazard: '<b>bad</b> hazard <script>alert(2)</script>',
+          actOrCondition: 'Act', personAtRisk: 'Rigger', hazardDescription: null,
+          baseSeverity: 2, baseProbability: 2, baseRating: 4, baseCategory: 'L',
+          additionalControl: 'A "quoted" control & more',
+          residualSeverity: 1, residualProbability: 1, residualRating: 1, residualCategory: 'VL',
+          skipped: false,
+        },
+      ],
+    });
+
+    await goToRiskAssessmentDetails(page, details);
+
+    const result = await page.evaluate(() => {
+      const nameEl = document.querySelector('.rd-ra-taskname');
+      return {
+        text: nameEl.textContent,
+        imgCount: document.querySelectorAll('#detailsDiv img').length,
+        bCount: document.querySelectorAll('#detailsDiv b').length,
+        scriptCount: document.querySelectorAll('#detailsDiv script').length,
+      };
+    });
+
+    assert.strictEqual(result.text, `1. ${maliciousName}`,
+      'the raw name must come back as plain text, unchanged');
+    assert.strictEqual(result.imgCount, 0, 'the markup in taskName must not have created an <img> element');
+    assert.strictEqual(result.bCount, 0, 'the markup in hazard must not have created a <b> element');
+    assert.strictEqual(result.scriptCount, 0, 'the markup in hazard must not have injected a <script> element');
+  });
+
   await browser.close();
 
   const failed = results.filter(r => !r.pass).length;

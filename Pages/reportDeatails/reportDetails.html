@@ -189,6 +189,10 @@
   <script src="../../Global/URLS.js"></script>
   <script src="../../Helpers/HttpHandler.js"></script>
   <script src="../../Js/HeaderTitle.js"></script>
+  <!-- Risk assessment branch below needs RISK_CATEGORY_COLOUR (RiskMatrix.js) and
+       escapeHtml (RiskAssessmentCard.js) - loaded here rather than duplicated. -->
+  <script src="../../Js/RiskMatrix.js"></script>
+  <script src="../../Templates/RiskAssessmentCard.js"></script>
 
   <script>
     //get query string from url
@@ -296,7 +300,108 @@
         html = createSafetyActionsHtml(actions);
         html += `</div>`;
       }
-      
+      // if risk assessment data is present then create html for it. Distinct shape
+      // from the three branches above (see ChangeFormController.GetTaskDetails,
+      // "RiskAssessment" case) - entries are TaskName/Hazard/Rating pairs, not
+      // question/responseValue pairs, so it needs its own rendering rather than
+      // being forced into the checklist branch.
+      else if (data.riskAssessmentData) {
+        const raStatusColors = {
+          Pending: { bg: '#fff8e1', fg: '#b8860b' },
+          Approved: { bg: '#dcfce7', fg: '#16a34a' },
+          Rejected: { bg: '#fee2e2', fg: '#dc2626' }
+        };
+        const raStatus = raStatusColors[data.status] || raStatusColors.Pending;
+
+        // Header: event name, status, form/location/department/area, reported by + date.
+        html += `<div style="padding:12px 0 8px;"><strong style="font-size:16px;">${escapeHtml(data.eventName || data.formName || '')}</strong>
+          <span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:${raStatus.bg};color:${raStatus.fg};margin-left:8px;">${escapeHtml(data.status || '')}</span>
+          <div style="font-size:12px;color:#888;margin-top:4px;">${escapeHtml(data.formName || '')}</div>
+          <div style="font-size:12px;color:#888;margin-top:2px;">By ${escapeHtml(data.reportedBy || '')} &middot; ${data.createdDate ? new Date(data.createdDate).toLocaleDateString() : ''}</div>
+        </div><hr>`;
+
+        if (data.location) {
+          html += `<div class='DropContainer'>
+      <p class='DropHeaders'>Location</p>
+      <div class='dropContent'>
+          <p>${escapeHtml(data.location)}</p>
+      </div>
+  </div>`;
+        }
+        if (data.department) {
+          html += `<div class='DropContainer'>
+      <p class='DropHeaders'>Department</p>
+      <div class='dropContent'>
+          <p>${escapeHtml(data.department)}</p>
+      </div>
+  </div>`;
+        }
+        if (data.area) {
+          html += `<div class='DropContainer'>
+      <p class='DropHeaders'>Area</p>
+      <div class='dropContent'>
+          <p>${escapeHtml(data.area)}</p>
+      </div>
+  </div>`;
+        }
+        if (data.createdDate) {
+          html += `
+              <div class='DateTimeContainer'>
+                <div class='reportDetailContainer'>
+                        <p class='reportDetailContent' style="font-weight:bold">Date</p>
+                        <h2 style="font-size:1rem">${new Date(data.createdDate).toDateString()}</h2>
+                        <i class="fa fa-calendar-minus-o" aria-hidden="true"></i>
+                </div>
+                <div class='reportDetailContainer'>
+                  <p class='reportDetailContent' style="font-weight:bold">Time</p>
+                  <h2 style="font-size:1rem">${new Date(data.createdDate).toLocaleTimeString()}</h2>
+                  <i class="fa fa-clock-o" aria-hidden="true"></i>
+                </div>
+              </div>`;
+        }
+        html += `<hr>`;
+
+        let tasks = data.riskAssessmentData;
+        if (!tasks || !tasks.length) {
+          html += `<p class="dropContent">No tasks recorded.</p>`;
+        } else {
+          tasks.forEach((t, i) => {
+            // A skipped task carries no scores (see RiskAssessmentController.
+            // SaveRiskAssessment) - it must read as deliberately skipped, never
+            // as scored zero or missing data, same rule the admin view (Views/
+            // RiskAssessment/Details.cshtml) follows with its em-dash/italic
+            // treatment.
+            if (t.skipped) {
+              html += `<div class="rd-ra-task rd-ra-task-skipped" style="padding:10px 0;border-bottom:1px solid #f5f5f5;background:#f7f7f7;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                  <span class="rd-ra-taskname" style="font-size:13px;flex:1;line-height:1.4;font-style:italic;color:#777777;">${i + 1}. ${escapeHtml(t.taskName)}</span>
+                  <span class="rd-ra-skip-badge" style="font-size:12px;font-weight:700;color:#b03a2e;background:#eeeeee;padding:2px 10px;border-radius:10px;margin-left:8px;white-space:nowrap;">SKIPPED</span>
+                </div>
+                ${t.hazard ? `<div style="font-size:12px;color:#888;margin-top:4px;font-style:italic;">Hazard: ${escapeHtml(t.hazard)}</div>` : ''}
+              </div>`;
+              return;
+            }
+
+            const baseColor = RISK_CATEGORY_COLOUR[t.baseCategory] || 'transparent';
+            const residualColor = RISK_CATEGORY_COLOUR[t.residualCategory] || 'transparent';
+
+            html += `<div class="rd-ra-task" style="padding:10px 0;border-bottom:1px solid #f5f5f5;">
+              <div class="rd-ra-taskname" style="font-size:13px;font-weight:700;">${i + 1}. ${escapeHtml(t.taskName)}</div>
+              ${t.hazard ? `<div style="font-size:12px;color:#888;margin-top:2px;">Hazard: ${escapeHtml(t.hazard)}</div>` : ''}
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+                <span style="font-size:12px;color:#888;">Base: S${escapeHtml(t.baseSeverity)} &times; P${escapeHtml(t.baseProbability)} = ${escapeHtml(t.baseRating)}</span>
+                <span class="rd-ra-category rd-ra-base-category" style="font-size:12px;font-weight:700;padding:2px 10px;border-radius:10px;background:${baseColor};">${escapeHtml(t.baseCategory)}</span>
+              </div>
+              ${t.additionalControl ? `<div style="font-size:12px;color:#666;margin-top:6px;"><strong>Additional control:</strong> ${escapeHtml(t.additionalControl)}</div>` : ''}
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+                <span style="font-size:12px;color:#888;">Residual: S${escapeHtml(t.residualSeverity)} &times; P${escapeHtml(t.residualProbability)} = ${escapeHtml(t.residualRating)}</span>
+                <span class="rd-ra-category rd-ra-residual-category" style="font-size:12px;font-weight:700;padding:2px 10px;border-radius:10px;background:${residualColor};">${escapeHtml(t.residualCategory)}</span>
+              </div>
+            </div>`;
+          });
+        }
+      }
+
       $("#detailsDiv").html(html);
     });
     </script>
