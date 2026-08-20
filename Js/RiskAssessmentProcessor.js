@@ -114,7 +114,7 @@ function renderReview() {
     const label = task.skipped
       ? '<span class="ra-skipped">Skipped</span>'
       : `${base ? base.category : '-'} &rarr; ${residual ? residual.category : '-'}`;
-    return `<li><strong>${task.taskName || '(unnamed task)'}</strong> ${label}</li>`;
+    return `<li><strong>${escapeHtml(task.taskName) || '(unnamed task)'}</strong> ${label}</li>`;
   }).join('');
 
   $('#riskAssessmentCard').hide();
@@ -217,8 +217,8 @@ $(function () {
     sendRequest('api/RiskAssessment/getRiskAssessmentForms', 'GET', null, function (forms) {
       $('#raTemplates').html(forms.map(form => `
         <button class="usafe-card" onclick="window.location.href='?formId=${form.id}'">
-          <span class="usafe-card-title">${form.name}</span>
-          <span class="ra-template-meta">${form.taskCount} tasks</span>
+          <span class="usafe-card-title">${escapeHtml(form.name)}</span>
+          <span class="ra-template-meta">${escapeHtml(form.taskCount)} tasks</span>
         </button>`).join(''));
     });
   }

@@ -336,6 +336,97 @@ async function main() {
     assert.strictEqual(baseTotal, 1);
   });
 
+  console.log('\nrenderReview HTML escaping (Task 9 review fix)');
+
+  await runTest('a task name with markup renders as text in the review list, no injection', async () => {
+    await page.goto(wizardUrl);
+    await page.waitForSelector('.ra-card');
+
+    await page.click('#raAddTask');
+    const rawName = '<img src=x onerror=alert(1)>Ladder & "Rigging" work';
+    await page.evaluate((name) => {
+      const tasks = window.riskAssessmentState.tasks;
+      tasks[tasks.length - 1].taskName = name;
+    }, rawName);
+
+    await page.click('#raReview');
+    await page.waitForSelector('#raSummary');
+
+    const result = await page.evaluate(() => {
+      const items = document.querySelectorAll('.ra-review-list li');
+      const li = items[items.length - 1];
+      const strong = li.querySelector('strong');
+      return {
+        strongText: strong.textContent,
+        strongInnerHtml: strong.innerHTML,
+        imgCount: li.querySelectorAll('img').length,
+        strongCount: li.querySelectorAll('strong').length,
+      };
+    });
+
+    // textContent round-trips through the browser's entity decoder, so this
+    // only comes back equal to the raw string when the markup was escaped
+    // exactly once - not left raw (which would inject an <img>) and not
+    // escaped twice (which would leave literal "&amp;" text behind).
+    assert.strictEqual(result.strongText, rawName,
+      'the raw name must come back as plain text, unchanged');
+    assert.strictEqual(result.imgCount, 0, 'the markup must not have created an <img> element');
+    assert.strictEqual(result.strongCount, 1, 'exactly the intended <strong> wrapper, nothing extra injected');
+    assert.strictEqual(result.strongInnerHtml,
+      '&lt;img src=x onerror=alert(1)&gt;Ladder &amp; "Rigging" work',
+      'markup should be escaped exactly once, matching escapeHtml\'s own output');
+  });
+
+  await runTest('a normal task name renders readably with no literal escape sequences', async () => {
+    await page.goto(wizardUrl);
+    await page.waitForSelector('.ra-card');
+
+    await page.evaluate(() => {
+      const state = window.riskAssessmentState;
+      state.tasks[state.index].taskName = 'Travel & Reporting';
+    });
+
+    await page.click('#raReview');
+    await page.waitForSelector('#raSummary');
+
+    const text = await page.evaluate(() =>
+      document.querySelector('.ra-review-list li strong').textContent);
+
+    assert.strictEqual(text, 'Travel & Reporting');
+    assert.ok(!text.includes('&amp;'), 'must not show literal &amp; - that would mean double-escaping');
+    assert.ok(!text.includes('&quot;'), 'must not show literal &quot;');
+  });
+
+  console.log('\nTemplate picker HTML escaping (Task 9 review fix)');
+
+  await runTest('a malicious form name in the template picker renders as text, not markup', async () => {
+    await page.route('**/api/RiskAssessment/getRiskAssessmentForms', route =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify([
+          { id: 1, name: '<img src=x onerror=alert(1)>Evil & "Form"', taskCount: 3 },
+        ]),
+      }));
+
+    await page.goto(PAGE_URL); // no ?formId= -> hits the template-picker branch
+    await page.waitForSelector('#raTemplates .usafe-card');
+
+    const result = await page.evaluate(() => {
+      const title = document.querySelector('.usafe-card-title');
+      return {
+        text: title.textContent,
+        imgCount: document.querySelectorAll('#raTemplates img').length,
+        cardCount: document.querySelectorAll('#raTemplates .usafe-card').length,
+      };
+    });
+
+    assert.strictEqual(result.text, '<img src=x onerror=alert(1)>Evil & "Form"');
+    assert.strictEqual(result.imgCount, 0, 'the markup must not have created an <img> element');
+    assert.strictEqual(result.cardCount, 1, 'exactly one card, nothing extra injected');
+
+    await page.unroute('**/api/RiskAssessment/getRiskAssessmentForms');
+  });
+
   await browser.close();
 
   const failed = results.filter(r => !r.pass).length;
