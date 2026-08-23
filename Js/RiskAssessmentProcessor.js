@@ -207,6 +207,37 @@ function removeTask(index) {
   goToList();
 }
 
+/**
+ * Removing a task discards every hazard (and every hazard's controls) scored
+ * under it — the single most destructive action in the wizard, so it is the
+ * only removal gated behind an explicit confirm. Reuses the confirm-dialog
+ * pattern already established in Components/tasks/index.js's
+ * confirmTaskAction (Swal.fire, showCancelButton) rather than inventing a
+ * second one, and reads its colours from the same CSS custom properties the
+ * page already styles with instead of hardcoding hex here.
+ */
+function confirmRemoveTask(index) {
+  const task = riskAssessmentState.tasks[index];
+  const hazardCount = task ? task.hazards.length : 0;
+  const text = hazardCount
+    ? `This will also delete ${hazardCount} hazard${hazardCount === 1 ? '' : 's'} scored under this task. This cannot be undone.`
+    : 'This cannot be undone.';
+  const rootStyle = getComputedStyle(document.documentElement);
+
+  Swal.fire({
+    title: 'Remove this task?',
+    text: text,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Remove',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: rootStyle.getPropertyValue('--ra-danger').trim() || '#c62828',
+    cancelButtonColor: rootStyle.getPropertyValue('--usafe-charcoal').trim() || '#2d2d2d',
+  }).then(function (result) {
+    if (result.isConfirmed) removeTask(index);
+  });
+}
+
 function addHazard() {
   const task = currentTask();
   if (!task) return;
@@ -447,12 +478,24 @@ $(function () {
     removeHazard(riskAssessmentState.nav.taskIndex, parseInt($(this).data('hazard-index'), 10));
   });
   $('#riskAssessmentRoot').on('click', '#raAddHazard', addHazard);
+  // The dominant bottom action on the task screen: confirms the task and
+  // returns to the list, where Review & Submit lives - identical to the
+  // breadcrumb's #raBackToList, kept as a separate id because it is a
+  // distinct, always-visible affordance (see .ra-sticky-footer), not a
+  // second way to trigger the same handler by coincidence.
+  $('#riskAssessmentRoot').on('click', '#raConfirmTask', goToList);
   $('#riskAssessmentRoot').on('click', '#raRemoveTask', function () {
-    removeTask(riskAssessmentState.nav.taskIndex);
+    confirmRemoveTask(riskAssessmentState.nav.taskIndex);
   });
 
   // ── Hazard screen ──
   $('#riskAssessmentRoot').on('click', '#raBackToTask', function () {
+    goToTask(riskAssessmentState.nav.taskIndex);
+  });
+  // The dominant bottom action on the hazard screen: confirms the hazard and
+  // returns to the task it belongs to - identical to the breadcrumb's
+  // #raBackToTask above, same reasoning as #raConfirmTask.
+  $('#riskAssessmentRoot').on('click', '#raConfirmHazard', function () {
     goToTask(riskAssessmentState.nav.taskIndex);
   });
   $('#riskAssessmentRoot').on('input', '.ra-hazard-text', function () {

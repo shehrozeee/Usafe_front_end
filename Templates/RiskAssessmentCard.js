@@ -196,8 +196,8 @@ function createTaskScreen(task, index) {
       <div class="ra-section-title"><i class="fas fa-exclamation-triangle"></i> Hazards</div>
       <div class="ra-hazard-list">${body}</div>
       <button type="button" id="raAddHazard" class="btn btn-default"><i class="fas fa-plus"></i> Add Hazard</button>
-      <button type="button" id="raRemoveTask" class="btn btn-outline-danger btn-block">Remove this task</button>
-    </div>`;
+    </div>
+    ${createConfirmFooter('raConfirmTask', 'Confirm Task', 'raRemoveTask', 'Remove this task')}`;
 }
 
 // ── Screen 3: one hazard's scoring form ──────────────────────────────────
@@ -231,6 +231,37 @@ function createRatingSection(title, subtitle, prefix, severity, probability, sca
         <span class="ra-rating-line">Rating <strong class="ra-${prefix}-rating">${result ? result.rating : '-'}</strong></span>
         ${categoryChip(result ? result.category : null, `ra-${prefix}-category`)}
       </div>
+    </div>`;
+}
+
+/**
+ * Bottom action pair shared by the task and hazard screens: two full,
+ * plainly visible buttons the assessor picks between having just filled the
+ * screen in - Confirm to move forward, Remove if this was a mistake. Neither
+ * screen had a forward action before this: both ended in a single full-width
+ * red "Remove this X" button, which was the only thing to tap after scoring
+ * a hazard or naming a task, and it destroyed the work instead of moving
+ * forward. Remove is NOT shrunk or tucked away here - it stays a real,
+ * full-width button, just styled as the destructive option (outline red)
+ * stacked below Confirm (filled brand yellow, the forward/positive option),
+ * so the two read as a clear pair of choices rather than one masquerading as
+ * the other. Confirm is pure navigation (goToTask/goToList), never
+ * validation - every field already writes straight into riskAssessmentState
+ * as the assessor types (see the input/change handlers in
+ * Js/RiskAssessmentProcessor.js), so there is nothing left to persist here.
+ * Wrapped in .ra-sticky-footer (css/risk-assessment.css) so both actions are
+ * reachable without scrolling past a long scoring form, not just at the very
+ * bottom of it - the exact gap a real user hit.
+ */
+function createConfirmFooter(confirmId, confirmLabel, removeId, removeLabel) {
+  return `
+    <div class="ra-sticky-footer">
+      <button type="button" id="${confirmId}" class="btn ra-confirm-btn btn-block">
+        <i class="fas fa-check"></i> ${confirmLabel}
+      </button>
+      <button type="button" id="${removeId}" class="btn btn-outline-danger btn-block ra-remove-btn">
+        ${removeLabel}
+      </button>
     </div>`;
 }
 
@@ -292,9 +323,8 @@ function createHazardScreen(task, hazard, taskIndex, hazardIndex, scale) {
       <div class="ra-flow-arrow"><i class="fas fa-arrow-down"></i> Risk remaining after controls</div>
 
       ${createRatingSection('Residual Risk', 'after controls', 'residual', hazard.residualSeverity, hazard.residualProbability, scale)}
-
-      <button type="button" id="raRemoveHazard" class="btn btn-outline-danger btn-block">Remove this hazard</button>
-    </div>`;
+    </div>
+    ${createConfirmFooter('raConfirmHazard', 'Confirm Hazard', 'raRemoveHazard', 'Remove this hazard')}`;
 }
 
 // ── Screen 4: review ──────────────────────────────────────────────────────

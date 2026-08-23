@@ -375,15 +375,155 @@ async function main() {
     assert.strictEqual(tasks[0].taskName, 'Task Two', 'removing index 0 must leave Task Two, not Task One');
   });
 
-  await runTest('removing the current task from inside it returns to the list', async () => {
+  await runTest('removing the current task from inside it asks for confirmation, then returns to the list', async () => {
+    // Removing a task discards every hazard scored under it, so - unlike
+    // removing a single hazard or control - it is gated behind an explicit
+    // Swal confirm (see confirmRemoveTask in Js/RiskAssessmentProcessor.js).
     await fillHeader(page);
     await page.click('.ra-task-open');
     await page.waitForSelector('.ra-task-screen');
     await page.click('#raRemoveTask');
+
+    await page.waitForSelector('.swal2-confirm', { state: 'visible' });
+    assert.strictEqual(await page.isVisible('.ra-list-screen'), false,
+      'must not remove anything before the dialog is confirmed');
+    await page.click('.swal2-confirm');
     await page.waitForSelector('.ra-list-screen');
 
     const tasks = await page.evaluate(() => window.riskAssessmentState.tasks);
     assert.strictEqual(tasks.length, 0);
+  });
+
+  await runTest('cancelling the remove-task confirmation keeps the task intact', async () => {
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.fill('.ra-task-name-input', 'Do Not Delete Me');
+    await page.click('#raRemoveTask');
+
+    await page.waitForSelector('.swal2-cancel', { state: 'visible' });
+    await page.click('.swal2-cancel');
+
+    assert.strictEqual(await page.isVisible('.ra-task-screen'), true,
+      'cancelling must leave the assessor on the task screen');
+    const tasks = await page.evaluate(() => window.riskAssessmentState.tasks);
+    assert.strictEqual(tasks.length, 1);
+    assert.strictEqual(tasks[0].taskName, 'Do Not Delete Me');
+  });
+
+  console.log('\nConfirm actions — the wizard must never dead-end on a Remove button');
+
+  await runTest('Confirm Hazard returns to the task screen and keeps what was entered', async () => {
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+    await page.fill('.ra-hazard-text', 'Forklift collision');
+    await page.selectOption('.ra-base-severity', '6');
+    await page.selectOption('.ra-base-probability', '6');
+
+    await page.click('#raConfirmHazard');
+    await page.waitForSelector('.ra-task-screen');
+
+    const hazard = await page.evaluate(() => window.riskAssessmentState.tasks[0].hazards[0]);
+    assert.strictEqual(hazard.hazardText, 'Forklift collision', 'the hazard text must survive the navigation');
+    assert.strictEqual(hazard.baseSeverity, 6);
+    assert.strictEqual(hazard.baseProbability, 6);
+    const cardText = await page.textContent('.ra-hazard-card-text');
+    assert.strictEqual(cardText.trim(), 'Forklift collision', 'the hazard must show up on the task screen, not be removed');
+  });
+
+  await runTest('Confirm Task returns to the list and keeps the task name and its hazards', async () => {
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+
+    // Both options must be present and visible together on the task screen too.
+    assert.strictEqual(await page.isVisible('#raConfirmTask'), true);
+    assert.strictEqual(await page.isVisible('#raRemoveTask'), true);
+    assert.strictEqual((await page.textContent('#raRemoveTask')).trim(), 'Remove this task');
+
+    await page.fill('.ra-task-name-input', 'Loading Dock Work');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+    await page.fill('.ra-hazard-text', 'Falling boxes');
+    await page.click('#raConfirmHazard');
+    await page.waitForSelector('.ra-task-screen');
+
+    await page.click('#raConfirmTask');
+    await page.waitForSelector('.ra-list-screen');
+
+    const tasks = await page.evaluate(() => window.riskAssessmentState.tasks);
+    assert.strictEqual(tasks[0].taskName, 'Loading Dock Work', 'the task name must survive the navigation');
+    assert.strictEqual(tasks[0].hazards.length, 1, 'the hazard scored under it must not be lost or removed');
+    assert.strictEqual(tasks[0].hazards[0].hazardText, 'Falling boxes');
+    const title = await page.textContent('.ra-task-card-title');
+    assert.strictEqual(title.trim(), 'Loading Dock Work');
+  });
+
+  await runTest('a complete path from scoring a hazard to Review & Submit, without touching the breadcrumb', async () => {
+    // This is the dead end from the bug report, walked end to end: score a
+    // hazard, confirm it, confirm the task, and land on Review & Submit -
+    // using only the new confirm buttons, never #raBackToTask/#raBackToList/
+    // #raCrumbList.
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.fill('.ra-task-name-input', 'Setup Activity');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+    await page.fill('.ra-hazard-text', 'Electric shock');
+    await page.selectOption('.ra-base-severity', '8');
+    await page.selectOption('.ra-base-probability', '2');
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="0"]', 'Isolate power before rigging');
+    await page.selectOption('.ra-residual-severity', '8');
+    await page.selectOption('.ra-residual-probability', '1');
+
+    await page.click('#raConfirmHazard');
+    await page.waitForSelector('.ra-task-screen');
+    await page.click('#raConfirmTask');
+    await page.waitForSelector('.ra-list-screen');
+    await page.click('#raReviewBtn');
+    await page.waitForSelector('.ra-review-screen');
+
+    const error = await page.textContent('#raError');
+    assert.strictEqual(error, '', 'the review gate must pass - the scored hazard and its task reached it intact');
+    const reviewText = await page.textContent('.ra-review-list');
+    assert.ok(reviewText.includes('Setup Activity'));
+    assert.ok(reviewText.includes('Electric shock'));
+    assert.ok(reviewText.includes('Isolate power before rigging'));
+
+    const [request] = await Promise.all([
+      page.waitForRequest('**/api/RiskAssessment/saveRiskAssessment'),
+      page.click('#raSubmit'),
+    ]);
+    const body = JSON.parse(request.postData());
+    assert.strictEqual(body.tasks[0].hazards[0].hazardText, 'Electric shock',
+      'what was scored via Confirm must be exactly what gets submitted');
+    await page.waitForURL('**/reporting.html', { timeout: 5000 }).catch(() => {});
+  });
+
+  await runTest('Remove this hazard stays a full, visible button alongside Confirm Hazard, and still works', async () => {
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+    await page.fill('.ra-hazard-text', 'Mistake - wrong hazard');
+
+    // Both options must be present and visible together - Remove is not
+    // hidden, shrunk, or replaced just because Confirm now exists alongside it.
+    assert.strictEqual(await page.isVisible('#raConfirmHazard'), true);
+    assert.strictEqual(await page.isVisible('#raRemoveHazard'), true);
+    assert.strictEqual((await page.textContent('#raRemoveHazard')).trim(), 'Remove this hazard');
+
+    await page.click('#raRemoveHazard');
+    await page.waitForSelector('.ra-task-screen');
+
+    const hazards = await page.evaluate(() => window.riskAssessmentState.tasks[0].hazards);
+    assert.strictEqual(hazards.length, 0, 'Remove this hazard must still remove it');
   });
 
   console.log('\nLive category chip (Base Risk section)');

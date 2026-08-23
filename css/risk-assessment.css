@@ -420,10 +420,67 @@
     font-weight: 700;
 }
 
-#raRemoveTask,
-#raRemoveHazard {
-    min-height: 46px;
+/* ── Task/hazard screen bottom action: two full, plainly visible buttons -
+   Confirm (forward) stacked above Remove (destructive) - the assessor picks
+   one having just finished filling the screen in. Sticky so both stay
+   reachable without scrolling to the bottom of a long scoring form - the
+   exact gap a real user hit. Extra bottom padding on the two screens that
+   use it (below) keeps their own content clear of it. */
+.ra-sticky-footer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-width: 480px;
+    margin: 0 auto;
+    background: var(--usafe-white);
+    border-top: 1px solid var(--usafe-border);
+    box-shadow: 0 -4px 14px rgba(0, 0, 0, 0.1);
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+    z-index: 50;
+}
+
+/* #riskAssessmentRoot already carries its own 100px padding-bottom (applies
+   to every screen); this only tops that up to clear .ra-sticky-footer's own
+   ~117px height, so the two do not stack into an oversized empty gap below
+   the last field. */
+.ra-task-screen,
+.ra-hazard-screen {
+    padding-bottom: 40px;
+}
+
+/* The forward/positive option: full width, filled brand yellow, sits above
+   Remove so it reads as the primary of the two - but Remove below it is
+   still a full, equally readable button, not a shrunk afterthought. */
+.ra-confirm-btn {
+    width: 100%;
+    min-height: 50px;
     border-radius: var(--usafe-radius-sm);
+    background: var(--usafe-yellow);
+    border: 1.5px solid var(--usafe-yellow);
+    color: var(--usafe-charcoal);
+    font-weight: 800;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(245, 183, 0, 0.35);
+}
+
+.ra-confirm-btn:active {
+    background: var(--usafe-yellow-dark);
+    border-color: var(--usafe-yellow-dark);
+}
+
+/* The destructive option: still a full-width, full-height button (same
+   footprint as Confirm above it) so it stays plainly visible and easy to
+   read - only its outline-red treatment (vs. Confirm's solid yellow fill)
+   marks it as the "undo this" choice rather than the way forward. */
+.ra-remove-btn {
+    border-radius: var(--usafe-radius-sm);
+    font-weight: 700;
+    min-height: 46px;
     margin-top: 8px;
 }
 
