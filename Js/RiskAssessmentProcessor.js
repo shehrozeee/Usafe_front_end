@@ -97,6 +97,44 @@ function buildRiskSummary(tasks) {
 
 // ── Navigation ─────────────────────────────────────────────────────────────
 
+/**
+ * Keeps the page-level subtitle (in the topbar area, outside #raScreen) in
+ * sync with wherever render() just put the assessor - this is the "where am
+ * I" signal that survives even if they scroll past the in-screen breadcrumb.
+ * Uses .text() throughout, which sets textContent rather than parsing HTML,
+ * so raw task/hazard names never need escapeHtml here.
+ */
+function updatePageSubtitle() {
+  const nav = riskAssessmentState.nav;
+  const tasks = riskAssessmentState.tasks;
+  let subtitle = 'Tasks';
+
+  if (nav.screen === 'list') {
+    subtitle = 'Tasks';
+  } else if (nav.screen === 'task') {
+    const task = currentTask();
+    subtitle = (task && task.taskName) ? task.taskName : `Task ${nav.taskIndex + 1}`;
+  } else if (nav.screen === 'hazard') {
+    // Not the hazard's own free text (which can run to a full sentence and
+    // wrap awkwardly here) - the breadcrumb below already names the hazard
+    // and the task it belongs to. This line's job is just "how far along am
+    // I in this task's hazard list".
+    const task = currentTask();
+    const hazardTotal = task ? task.hazards.length : 0;
+    subtitle = `Hazard ${nav.hazardIndex + 1} of ${hazardTotal}`;
+  } else if (nav.screen === 'review') {
+    subtitle = 'Review & submit';
+  }
+  $('#raPageSubtitle').text(subtitle);
+
+  let progress = '';
+  if (tasks && tasks.length && nav.screen !== 'review') {
+    const hazardCount = tasks.reduce((sum, t) => sum + t.hazards.length, 0);
+    progress = `${tasks.length} task${tasks.length === 1 ? '' : 's'} · ${hazardCount} hazard${hazardCount === 1 ? '' : 's'}`;
+  }
+  $('#raProgressCount').text(progress);
+}
+
 function render() {
   const nav = riskAssessmentState.nav;
 
@@ -110,6 +148,7 @@ function render() {
   } else if (nav.screen === 'review') {
     renderReview();
   }
+  updatePageSubtitle();
 }
 
 function goToList() {
@@ -200,18 +239,31 @@ function removeControl(index) {
 // Patches only the rating/category text rather than re-rendering the whole
 // screen, so a select change never disturbs focus on the free-text fields
 // around it.
+/**
+ * Repaints one category chip in place: text, background, text colour and the
+ * warn/calm marker class, all driven by categoryChipStyle (Templates/
+ * RiskAssessmentCard.js) so a live update never drifts from how the same chip
+ * looks on first render.
+ */
+function paintCategoryChip($el, category) {
+  const style = categoryChipStyle(category);
+  $el.removeClass('ra-chip-warn ra-chip-safe ra-chip-alarm')
+    .addClass(style.marker)
+    .toggleClass('ra-chip-alarm', style.alarm)
+    .css({ 'background-color': style.bg, color: style.color })
+    .text(category || '-');
+}
+
 function updateHazardChips() {
   const base = evaluateRisk(
     parseInt($('.ra-base-severity').val(), 10), parseInt($('.ra-base-probability').val(), 10));
   $('.ra-base-rating').text(base ? base.rating : '-');
-  $('.ra-base-category').text(base ? base.category : '-')
-    .css('background-color', base ? RISK_CATEGORY_COLOUR[base.category] : 'transparent');
+  paintCategoryChip($('.ra-base-category'), base ? base.category : null);
 
   const residual = evaluateRisk(
     parseInt($('.ra-residual-severity').val(), 10), parseInt($('.ra-residual-probability').val(), 10));
   $('.ra-residual-rating').text(residual ? residual.rating : '-');
-  $('.ra-residual-category').text(residual ? residual.category : '-')
-    .css('background-color', residual ? RISK_CATEGORY_COLOUR[residual.category] : 'transparent');
+  paintCategoryChip($('.ra-residual-category'), residual ? residual.category : null);
 }
 
 // ── Photos (review screen) ──────────────────────────────────────────────
@@ -333,8 +385,13 @@ function confirmHeader() {
   const activity = $('#raActivity').val().trim();
   if (!activity) {
     $('#raError').text('Enter the activity before continuing.');
+    // markFieldError/clearFieldError (Helpers/Validation.js, shared and
+    // unchanged) give the same red-border-plus-shake feedback every other
+    // form page uses for a required field, on top of the text error below.
+    markFieldError(document.getElementById('raActivity'), 'Enter the activity before continuing.');
     return;
   }
+  clearFieldError(document.getElementById('raActivity'));
 
   riskAssessmentState.header.activity = activity;
   riskAssessmentState.header.typeOfActivity = $('#raTypeOfActivity').val().trim();
@@ -374,6 +431,10 @@ $(function () {
 
   // ── Task screen ──
   $('#riskAssessmentRoot').on('click', '#raBackToList', goToList);
+  // The hazard screen's breadcrumb root crumb ("Tasks") - a one-tap jump back
+  // to the very top of the hierarchy from three levels deep, distinct from
+  // #raBackToTask which only goes up one level.
+  $('#riskAssessmentRoot').on('click', '#raCrumbList', goToList);
   $('#riskAssessmentRoot').on('input', '.ra-task-name-input', function () {
     const task = currentTask();
     if (task) task.taskName = $(this).val();

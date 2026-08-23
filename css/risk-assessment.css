@@ -1,0 +1,720 @@
+/* ===== Risk Assessment wizard — page-specific styles =====
+   Tokens (--usafe-*) come from css/usafe-global.css. Topbar/page-container
+   classes (.usafe-topbar, .page-container, .usafe-page-content) come from
+   css/usafe-app.css. This file only holds what is unique to the RA wizard:
+   the builder screens, the score/rating widgets, the breadcrumb, and the
+   review screen.
+
+   Two local tokens are declared below for colours the shared design system
+   does not expose a variable for (danger red, the photo dropzone's neutral
+   background/border). Both reuse values already used elsewhere in the app
+   (css/usafe-global.css's badge-rejected, css/checklist-v2.css's --red) so
+   nothing new is being invented, it is just centralised here instead of
+   being repeated as bare hex. */
+:root {
+    --ra-danger: #c62828;
+    --ra-dropzone-bg: var(--usafe-surface);
+    --ra-dropzone-border: var(--usafe-border);
+}
+
+/* checklistType.html defines .page-container locally per-page rather than in
+   the shared usafe-app.css (which only styles .usafe-content-area) - this
+   mirrors that same per-page convention rather than inventing a new shared
+   class. */
+.page-container {
+    padding: 16px 16px 0;
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+#riskAssessmentRoot {
+    padding-bottom: 100px;
+}
+
+.ra-page-subtitle-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.ra-progress-count {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--usafe-text-mid);
+    text-transform: none;
+    letter-spacing: normal;
+    white-space: nowrap;
+}
+
+.ra-screen-title {
+    font-size: 20px;
+    font-weight: 800;
+    margin: 4px 0 16px;
+    color: var(--usafe-text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ra-screen-title i {
+    color: var(--usafe-yellow-dark);
+    font-size: 17px;
+}
+
+/* ── Breadcrumb: always-visible "you are here" trail with one-tap jumps ── */
+.ra-breadcrumb {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 10px 2px;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.ra-crumb {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.ra-crumb-link {
+    color: var(--usafe-text-mid);
+    cursor: pointer;
+    padding: 8px 4px;
+    margin: -8px -4px;
+    border-radius: var(--usafe-radius-sm);
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.ra-crumb-link:active {
+    background: var(--usafe-border);
+}
+
+.ra-crumb-current {
+    color: var(--usafe-text);
+    word-break: break-word;
+}
+
+.ra-crumb-sep {
+    color: var(--usafe-text-light);
+    font-weight: 400;
+}
+
+.ra-section-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--usafe-text-mid);
+    margin: 20px 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ── Task / hazard list cards ── */
+.ra-task-card,
+.ra-hazard-card {
+    position: relative;
+    background: var(--usafe-white);
+    border-radius: var(--usafe-radius-sm);
+    box-shadow: var(--usafe-shadow);
+    margin-bottom: 12px;
+    border-left: 4px solid var(--usafe-yellow);
+}
+
+.ra-hazard-card {
+    border-left-color: var(--usafe-charcoal);
+}
+
+.ra-task-open,
+.ra-hazard-open {
+    padding: 16px 44px 16px 16px;
+    cursor: pointer;
+    min-height: 44px;
+}
+
+.ra-task-card-title,
+.ra-hazard-card-text {
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 6px;
+    word-break: break-word;
+}
+
+.ra-task-card-meta,
+.ra-hazard-card-meta {
+    font-size: 12px;
+    color: var(--usafe-text-mid);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.ra-task-remove,
+.ra-hazard-remove,
+.ra-control-remove {
+    background: none;
+    border: none;
+    font-size: 20px;
+    line-height: 1;
+    color: var(--ra-danger);
+    cursor: pointer;
+    padding: 10px;
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ra-task-remove,
+.ra-hazard-remove {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    z-index: 2;
+}
+
+.ra-placeholder {
+    color: var(--usafe-text-light);
+    font-style: italic;
+    font-weight: 400;
+}
+
+/* ── Empty states ── */
+.ra-empty-hint {
+    color: var(--usafe-text-mid);
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 20px 16px;
+    text-align: center;
+    background: var(--ra-dropzone-bg);
+    border: 1.5px dashed var(--ra-dropzone-border);
+    border-radius: var(--usafe-radius-sm);
+    margin-bottom: 12px;
+}
+
+.ra-empty-hint i {
+    display: block;
+    font-size: 20px;
+    margin-bottom: 6px;
+    color: var(--usafe-text-light);
+}
+
+/* ── Category chip: reads as a risk level, not just a coloured dot ── */
+.ra-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+}
+
+/* A scored-but-average category is calm; the two worst categories get a
+   bigger, bolder treatment so VH reads as alarming next to a quiet VL. */
+.ra-chip-alarm {
+    font-size: 13px;
+    padding: 4px 14px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+/* Warn/calm markers as generated content, not literal text - several tests
+   read a chip's exact textContent (e.g. expecting precisely "L"), so the icon
+   must never become part of the DOM text. See categoryChipStyle in
+   Templates/RiskAssessmentCard.js. */
+.ra-chip-warn::before {
+    content: "\26A0";
+    margin-right: 3px;
+}
+
+.ra-chip-safe::before {
+    content: "\2713";
+    margin-right: 3px;
+}
+
+.ra-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--usafe-border);
+    color: var(--usafe-text-mid);
+}
+
+.ra-toggle {
+    display: flex;
+    gap: 8px;
+}
+
+.ra-toggle-btn {
+    flex: 1;
+    min-height: 46px;
+    padding: 10px;
+    border-radius: var(--usafe-radius-sm);
+    border: 1.5px solid var(--usafe-border);
+    background: var(--usafe-white);
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.ra-toggle-btn.active {
+    background: var(--usafe-charcoal);
+    color: var(--usafe-yellow);
+    border-color: var(--usafe-charcoal);
+}
+
+/* ── Base / Residual scoring sections ── */
+.ra-section {
+    background: var(--usafe-surface);
+    border-radius: var(--usafe-radius-sm);
+    padding: 16px;
+    margin: 12px 0;
+    border: 1px solid var(--usafe-border);
+}
+
+.ra-section--residual {
+    border: 1.5px solid var(--usafe-yellow);
+    background: #fffdf5;
+}
+
+.ra-section-sub {
+    text-transform: none;
+    font-weight: 500;
+    letter-spacing: normal;
+    color: var(--usafe-text-light);
+}
+
+.ra-flow-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--usafe-text-light);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin: -2px 0;
+}
+
+.ra-flow-arrow i {
+    color: var(--usafe-yellow-dark);
+}
+
+.ra-score-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.ra-score-grid .form-group {
+    margin-bottom: 0;
+}
+
+.ra-score-grid label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--usafe-text-mid);
+    margin-bottom: 4px;
+    display: block;
+}
+
+.ra-score-result {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--usafe-border);
+}
+
+.ra-score-eq {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--usafe-text-light);
+}
+
+.ra-rating-line {
+    font-size: 14px;
+    color: var(--usafe-text-mid);
+}
+
+.ra-rating-line strong {
+    color: var(--usafe-text);
+    font-size: 16px;
+}
+
+.ra-control-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.ra-control-row .form-control {
+    flex: 1;
+}
+
+.ra-controls-block {
+    margin: 16px 0;
+}
+
+.ra-optional {
+    font-weight: 400;
+    text-transform: none;
+    color: var(--usafe-text-light);
+}
+
+/* ── Add buttons: three distinct visual weights so "add task" vs "add
+   hazard" vs "add control" can never be confused, even out of context ── */
+#raAddTask,
+#raAddHazard,
+#raAddControl {
+    width: 100%;
+    margin-bottom: 10px;
+    border-radius: var(--usafe-radius-sm);
+    font-weight: 700;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+#raAddTask {
+    background: var(--usafe-yellow);
+    border-color: var(--usafe-yellow);
+    color: var(--usafe-charcoal);
+    font-size: 15px;
+}
+
+#raAddHazard {
+    background: var(--usafe-charcoal);
+    border-color: var(--usafe-charcoal);
+    color: var(--usafe-yellow);
+    font-size: 15px;
+}
+
+#raAddControl {
+    background: transparent;
+    border: 1.5px dashed var(--usafe-border);
+    color: var(--usafe-text-mid);
+    font-size: 14px;
+}
+
+#raReviewBtn {
+    width: 100%;
+    min-height: 48px;
+    border-radius: var(--usafe-radius-sm);
+    font-weight: 700;
+}
+
+#raRemoveTask,
+#raRemoveHazard {
+    min-height: 46px;
+    border-radius: var(--usafe-radius-sm);
+    margin-top: 8px;
+}
+
+/* ── Review screen ── */
+.ra-review-summary {
+    background: var(--usafe-white);
+    border-radius: var(--usafe-radius-sm);
+    box-shadow: var(--usafe-shadow);
+    padding: 16px;
+    margin-bottom: 16px;
+    border-top: 4px solid var(--usafe-yellow);
+}
+
+.ra-review-summary-title {
+    font-size: 13px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--usafe-text-mid);
+    margin-bottom: 10px;
+}
+
+.ra-review-verdict {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--usafe-text);
+    margin-bottom: 12px;
+}
+
+.ra-review-verdict strong {
+    font-weight: 800;
+}
+
+.ra-task-card,
+.ra-hazard-card,
+.ra-review-task,
+.ra-review-header {
+    background: var(--usafe-white);
+}
+
+.ra-review-task {
+    list-style: none;
+    background: var(--usafe-white);
+    border-radius: var(--usafe-radius-sm);
+    box-shadow: var(--usafe-shadow);
+    padding: 14px;
+    margin-bottom: 14px;
+}
+
+.ra-review-task-name {
+    font-weight: 800;
+    margin-bottom: 8px;
+    font-size: 15px;
+}
+
+.ra-review-hazards {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.ra-review-hazard {
+    border-top: 1px solid var(--usafe-border);
+    padding: 12px 0;
+}
+
+.ra-review-hazard:first-child {
+    border-top: none;
+    padding-top: 4px;
+}
+
+.ra-review-hazard-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.ra-review-hazard-meta {
+    font-size: 12px;
+    color: var(--usafe-text-mid);
+    margin: 8px 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.ra-review-controls {
+    margin: 8px 0 0;
+    padding-left: 20px;
+    font-size: 13px;
+}
+
+.ra-review-controls li {
+    margin-bottom: 3px;
+}
+
+.ra-review-no-controls {
+    font-size: 12px;
+    color: var(--usafe-text-light);
+    margin: 4px 0 0;
+    font-style: italic;
+}
+
+.ra-review-header {
+    background: var(--usafe-white);
+    border-radius: var(--usafe-radius-sm);
+    box-shadow: var(--usafe-shadow);
+    padding: 14px;
+    margin-bottom: 16px;
+}
+
+.ra-review-header-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--usafe-border);
+}
+
+.ra-review-header-row:last-child {
+    border-bottom: none;
+}
+
+.ra-review-header-label {
+    color: var(--usafe-text-mid);
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.ra-review-header-value {
+    text-align: right;
+    word-break: break-word;
+    font-weight: 600;
+}
+
+/* Heat-mapped summary table: each column tinted with its own risk colour so
+   the worst column is visible before reading a single number. */
+.ra-summary-table {
+    font-size: 12px;
+    text-align: center;
+    background: var(--usafe-white);
+    margin: 0;
+}
+
+.ra-summary-table th,
+.ra-summary-table td {
+    padding: 8px 4px;
+    vertical-align: middle;
+}
+
+.ra-summary-table thead th {
+    font-weight: 800;
+    color: var(--usafe-charcoal);
+}
+
+.ra-summary-table tbody th {
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--usafe-text-mid);
+    white-space: nowrap;
+}
+
+.ra-summary-table td {
+    font-weight: 700;
+}
+
+.ra-photo-section {
+    margin: 20px 0;
+    padding: 16px;
+    background: var(--ra-dropzone-bg);
+    border-radius: var(--usafe-radius-sm);
+    border: 1.5px dashed var(--ra-dropzone-border);
+}
+
+.ra-photo-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--usafe-text-mid);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+}
+
+.ra-photo-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+#raPhotoAdd {
+    min-height: 44px;
+}
+
+.ra-photo-status {
+    font-size: 12px;
+    color: var(--usafe-text-mid);
+}
+
+.ra-photo-list {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0 0;
+}
+
+.ra-photo-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    font-size: 13px;
+}
+
+.ra-photo-name {
+    flex: 1;
+    word-break: break-word;
+}
+
+.ra-photo-remove {
+    min-width: 40px;
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--ra-danger);
+    font-size: 20px;
+    cursor: pointer;
+}
+
+#raSubmit {
+    min-height: 50px;
+    border-radius: var(--usafe-radius-sm);
+    font-weight: 800;
+    font-size: 16px;
+    margin-top: 8px;
+}
+
+.ra-error {
+    padding: 8px 4px;
+    min-height: 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* ── Header (event details) step ── */
+#raHeaderStep .form-group label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--usafe-text-mid);
+}
+
+#raHeaderStep .form-control {
+    min-height: 48px;
+}
+
+#raHeaderNext {
+    min-height: 48px;
+    border-radius: var(--usafe-radius-sm);
+    font-weight: 700;
+    margin-top: 8px;
+}
+
+/* ── Universal touch-target and legibility floor ── */
+#riskAssessmentRoot .form-control {
+    min-height: 46px;
+    font-size: 15px;
+    border-radius: var(--usafe-radius-sm);
+    border: 1.5px solid var(--usafe-border);
+}
+
+#riskAssessmentRoot .form-control:focus {
+    border-color: var(--usafe-yellow);
+    box-shadow: 0 0 0 3px rgba(245, 183, 0, 0.15);
+    outline: none;
+}
+
+#riskAssessmentRoot .btn {
+    min-height: 44px;
+}
+
+@media (max-width: 380px) {
+    .ra-score-grid {
+        grid-template-columns: 1fr;
+    }
+}

@@ -34,12 +34,47 @@ function riskScaleOptions(options, selected) {
   }).join('');
 }
 
+/**
+ * How a category chip should look. RISK_CATEGORY_COLOUR (Js/RiskMatrix.js) is
+ * the one and only source of the background colour - that map is off limits
+ * and stays exactly as-is. This only decides the *contrast* around it (text
+ * colour + a warn/calm marker) so that a VH chip reads as an alarm and a VL
+ * chip reads as calm, instead of every category looking like the same grey
+ * pill with a different pastel behind it. The two worst categories (H, VH)
+ * get dark backgrounds from that map, so they need light text; everything
+ * else keeps dark text on its pale background.
+ *
+ * The warn/calm marker is applied as a CSS class (ra-chip-warn / ra-chip-safe,
+ * styled with a ::before icon in css/risk-assessment.css) rather than as a
+ * literal character in the chip's text - several tests read the chip's exact
+ * textContent (e.g. expecting precisely "L" or "VH"), and a ::before glyph is
+ * rendering-only, so it never appears in textContent and those assertions
+ * stay valid. Both colours used here are already design-system tokens
+ * (--usafe-charcoal / --usafe-white), nothing new.
+ */
+function categoryChipStyle(category) {
+  if (!category) {
+    return { bg: 'transparent', color: 'var(--usafe-text-light)', marker: '', alarm: false };
+  }
+  const rank = CATEGORY_ORDER.indexOf(category);
+  const isHigh = rank >= 4; // H, VH
+  const isLow = rank >= 0 && rank <= 1; // VL, L
+  return {
+    bg: RISK_CATEGORY_COLOUR[category],
+    color: isHigh ? 'var(--usafe-white)' : 'var(--usafe-charcoal)',
+    marker: isHigh ? 'ra-chip-warn' : (isLow ? 'ra-chip-safe' : ''),
+    alarm: isHigh,
+  };
+}
+
 /** category is a category string ('VL'..'VH') or null/falsy for "not yet scored". */
 function categoryChip(category, extraClass) {
+  const style = categoryChipStyle(category);
   const classes = ['ra-chip'];
   if (extraClass) classes.push(extraClass);
-  const bg = category ? RISK_CATEGORY_COLOUR[category] : 'transparent';
-  return `<span class="${classes.join(' ')}" style="background-color:${bg}">${category || '-'}</span>`;
+  if (style.marker) classes.push(style.marker);
+  if (style.alarm) classes.push('ra-chip-alarm');
+  return `<span class="${classes.join(' ')}" style="background-color:${style.bg};color:${style.color}">${category || '-'}</span>`;
 }
 
 /** Worst (highest-ranked) category among a task's hazards for the given field, or null if none scored yet. */
@@ -95,7 +130,7 @@ function createTaskListCard(task, index) {
       <div class="ra-task-open" data-task-index="${index}">
         <div class="ra-task-card-title">${title}</div>
         <div class="ra-task-card-meta">
-          <span>${hazardCount} hazard${hazardCount === 1 ? '' : 's'}</span>
+          <span><i class="fas fa-exclamation-triangle"></i> ${hazardCount} hazard${hazardCount === 1 ? '' : 's'}</span>
           ${baseWorst ? `Base ${categoryChip(baseWorst)}` : ''}
           ${residualWorst ? `&rarr; ${categoryChip(residualWorst)}` : ''}
         </div>
@@ -106,13 +141,13 @@ function createTaskListCard(task, index) {
 function createListScreen(tasks) {
   const body = tasks.length
     ? tasks.map(createTaskListCard).join('')
-    : '<p class="ra-empty-hint">No tasks yet. Add one to start.</p>';
+    : `<div class="ra-empty-hint"><i class="fas fa-clipboard-list"></i>No tasks yet. Tap "Add Task" below to log the first thing being done.</div>`;
 
   return `
     <div class="ra-screen ra-list-screen">
-      <div class="ra-screen-title">Tasks</div>
+      <div class="ra-screen-title"><i class="fas fa-tasks"></i> Tasks</div>
       <div class="ra-task-list">${body}</div>
-      <button type="button" id="raAddTask" class="btn btn-default">+ Add task</button>
+      <button type="button" id="raAddTask" class="btn btn-default"><i class="fas fa-plus"></i> Add Task</button>
       <button type="button" id="raReviewBtn" class="btn btn-primary">Review &amp; Submit</button>
     </div>`;
 }
@@ -140,44 +175,60 @@ function createHazardListCard(hazard, index) {
 }
 
 function createTaskScreen(task, index) {
-  const backLabel = 'Tasks';
+  const taskLabel = task.taskName ? escapeHtml(task.taskName) : `Task ${index + 1}`;
   const body = task.hazards.length
     ? task.hazards.map(createHazardListCard).join('')
-    : '<p class="ra-empty-hint">No hazards logged yet for this task.</p>';
+    : `<div class="ra-empty-hint"><i class="fas fa-exclamation-triangle"></i>No hazards logged yet. Tap "Add Hazard" for the first thing that could go wrong here.</div>`;
 
   return `
     <div class="ra-screen ra-task-screen">
-      <button type="button" class="ra-back" id="raBackToList">&larr; ${backLabel}</button>
-      <div class="ra-screen-title">Task ${index + 1}</div>
+      <div class="ra-breadcrumb">
+        <span class="ra-crumb ra-crumb-link" id="raBackToList"><i class="fas fa-tasks"></i> Tasks</span>
+        <span class="ra-crumb-sep">&rsaquo;</span>
+        <span class="ra-crumb ra-crumb-current">${taskLabel}</span>
+      </div>
+      <div class="ra-screen-title"><i class="fas fa-tasks"></i> Task ${index + 1}</div>
       <div class="form-group">
         <label>Task name</label>
         <input type="text" class="form-control ra-task-name-input" placeholder="What is being done?"
           value="${escapeHtml(task.taskName)}">
       </div>
-      <div class="ra-section-title">Hazards</div>
+      <div class="ra-section-title"><i class="fas fa-exclamation-triangle"></i> Hazards</div>
       <div class="ra-hazard-list">${body}</div>
-      <button type="button" id="raAddHazard" class="btn btn-default">+ Add hazard</button>
+      <button type="button" id="raAddHazard" class="btn btn-default"><i class="fas fa-plus"></i> Add Hazard</button>
       <button type="button" id="raRemoveTask" class="btn btn-outline-danger btn-block">Remove this task</button>
     </div>`;
 }
 
 // ── Screen 3: one hazard's scoring form ──────────────────────────────────
 
-function createRatingSection(title, prefix, severity, probability, scale) {
+/**
+ * One scoring box (Base or Residual). Severity and Probability sit side by
+ * side in one grid with a shared label above ("Severity x Probability"), and
+ * the result is shown below a rule as "= Rating N [category chip]" - the
+ * layout itself says "these two selects multiply into that result",  rather
+ * than leaving three stacked, visually unrelated form-groups for the assessor
+ * to mentally connect. The severity/probability/rating/category classes are
+ * unchanged (tests select on them directly).
+ */
+function createRatingSection(title, subtitle, prefix, severity, probability, scale) {
   const result = evaluateRisk(severity, probability);
   return `
-    <div class="ra-section">
-      <div class="ra-section-title">${title}</div>
-      <div class="form-group">
-        <label>Severity</label>
-        <select class="form-control ra-${prefix}-severity">${riskScaleOptions(scale.severity, severity)}</select>
+    <div class="ra-section ra-section--${prefix}">
+      <div class="ra-section-title">${title} <span class="ra-section-sub">${subtitle}</span></div>
+      <div class="ra-score-grid">
+        <div class="form-group">
+          <label>Severity</label>
+          <select class="form-control ra-${prefix}-severity">${riskScaleOptions(scale.severity, severity)}</select>
+        </div>
+        <div class="form-group">
+          <label>Probability</label>
+          <select class="form-control ra-${prefix}-probability">${riskScaleOptions(scale.probability, probability)}</select>
+        </div>
       </div>
-      <div class="form-group">
-        <label>Probability</label>
-        <select class="form-control ra-${prefix}-probability">${riskScaleOptions(scale.probability, probability)}</select>
-      </div>
-      <div class="ra-rating-line">
-        Rating <strong class="ra-${prefix}-rating">${result ? result.rating : '-'}</strong>
+      <div class="ra-score-result">
+        <span class="ra-score-eq">=</span>
+        <span class="ra-rating-line">Rating <strong class="ra-${prefix}-rating">${result ? result.rating : '-'}</strong></span>
         ${categoryChip(result ? result.category : null, `ra-${prefix}-category`)}
       </div>
     </div>`;
@@ -193,15 +244,21 @@ function createControlRow(control, index) {
 }
 
 function createHazardScreen(task, hazard, taskIndex, hazardIndex, scale) {
-  const backLabel = task.taskName ? escapeHtml(task.taskName) : `Task ${taskIndex + 1}`;
+  const taskLabel = task.taskName ? escapeHtml(task.taskName) : `Task ${taskIndex + 1}`;
   const controlsBody = hazard.controls.length
     ? hazard.controls.map(createControlRow).join('')
-    : '<p class="ra-empty-hint">No controls added yet — that is fine, an unmitigated hazard is still a valid finding.</p>';
+    : `<div class="ra-empty-hint"><i class="fas fa-shield-alt"></i>No controls added yet - that is fine, an unmitigated hazard is still a valid finding.</div>`;
 
   return `
     <div class="ra-screen ra-hazard-screen">
-      <button type="button" class="ra-back" id="raBackToTask">&larr; ${backLabel}</button>
-      <div class="ra-screen-title">Hazard ${hazardIndex + 1}</div>
+      <div class="ra-breadcrumb">
+        <span class="ra-crumb ra-crumb-link" id="raCrumbList"><i class="fas fa-tasks"></i> Tasks</span>
+        <span class="ra-crumb-sep">&rsaquo;</span>
+        <span class="ra-crumb ra-crumb-link" id="raBackToTask">${taskLabel}</span>
+        <span class="ra-crumb-sep">&rsaquo;</span>
+        <span class="ra-crumb ra-crumb-current">Hazard ${hazardIndex + 1}</span>
+      </div>
+      <div class="ra-screen-title"><i class="fas fa-exclamation-triangle"></i> Hazard ${hazardIndex + 1}</div>
 
       <div class="form-group">
         <label>Hazard</label>
@@ -222,15 +279,19 @@ function createHazardScreen(task, hazard, taskIndex, hazardIndex, scale) {
         <input type="text" class="form-control ra-person" value="${escapeHtml(hazard.personAtRisk)}">
       </div>
 
-      ${createRatingSection('Base Risk', 'base', hazard.baseSeverity, hazard.baseProbability, scale)}
+      ${createRatingSection('Base Risk', 'before controls', 'base', hazard.baseSeverity, hazard.baseProbability, scale)}
+
+      <div class="ra-flow-arrow"><i class="fas fa-arrow-down"></i> Controls applied to reduce this risk</div>
 
       <div class="ra-controls-block">
-        <div class="ra-section-title">Controls <span class="ra-optional">(optional)</span></div>
+        <div class="ra-section-title"><i class="fas fa-shield-alt"></i> Controls <span class="ra-optional">(optional)</span></div>
         <div class="ra-control-list">${controlsBody}</div>
-        <button type="button" id="raAddControl" class="btn btn-default">+ Add control</button>
+        <button type="button" id="raAddControl" class="btn btn-default"><i class="fas fa-plus"></i> Add Control</button>
       </div>
 
-      ${createRatingSection('Residual Risk', 'residual', hazard.residualSeverity, hazard.residualProbability, scale)}
+      <div class="ra-flow-arrow"><i class="fas fa-arrow-down"></i> Risk remaining after controls</div>
+
+      ${createRatingSection('Residual Risk', 'after controls', 'residual', hazard.residualSeverity, hazard.residualProbability, scale)}
 
       <button type="button" id="raRemoveHazard" class="btn btn-outline-danger btn-block">Remove this hazard</button>
     </div>`;
@@ -253,9 +314,21 @@ function createReviewHeaderSummary(header) {
   }).join('')}</div>`;
 }
 
+/** Highest-ranked category with at least one hazard in it, or null if the row is all zero (nothing scored). */
+function worstFromSummaryRow(row) {
+  let worstIndex = -1;
+  CATEGORY_ORDER.forEach(function (category, idx) {
+    if (row[category] > 0) worstIndex = idx;
+  });
+  return worstIndex === -1 ? null : CATEGORY_ORDER[worstIndex];
+}
+
 function createRiskSummaryTable(summary) {
   const categories = ['VL', 'L', 'M', 'M+', 'H', 'VH'];
-  const headerCells = categories.map(c => `<th>${c}</th>`).join('');
+  const headerCells = categories.map(function (c) {
+    const style = categoryChipStyle(c);
+    return `<th style="background-color:${style.bg};color:${style.color}">${c}</th>`;
+  }).join('');
   const baseCells = categories.map(c => `<td>${summary.base[c]}</td>`).join('');
   const residualCells = categories.map(c => `<td>${summary.residual[c]}</td>`).join('');
 
@@ -267,6 +340,30 @@ function createRiskSummaryTable(summary) {
         <tr><th>Residual</th>${residualCells}</tr>
       </tbody>
     </table>`;
+}
+
+/**
+ * The one-line "so what" that opens the review screen: how many hazards were
+ * logged and the worst category before vs. after controls, in the same big
+ * chips used throughout the wizard - so the risk profile reads as the
+ * assessment's conclusion, not as a small bordered table buried between the
+ * header fields and a long list of tasks.
+ */
+function createReviewVerdict(summary) {
+  const hazardCount = CATEGORY_ORDER.reduce((sum, c) => sum + summary.base[c], 0);
+  if (!hazardCount) return '';
+
+  const worstBase = worstFromSummaryRow(summary.base);
+  const worstResidual = worstFromSummaryRow(summary.residual);
+
+  return `
+    <div class="ra-review-verdict">
+      <span>${hazardCount} hazard${hazardCount === 1 ? '' : 's'} assessed &mdash; worst risk</span>
+      ${categoryChip(worstBase)}
+      <i class="fas fa-arrow-right"></i>
+      ${categoryChip(worstResidual)}
+      <span>after controls</span>
+    </div>`;
 }
 
 /** Flat "task -> hazards -> controls" list, one row per hazard, task repeated as a header — the same shape the review is read in, whether on screen or in the eventual export. */
@@ -304,11 +401,21 @@ function createReviewList(tasks) {
 function createReviewScreen(header, tasks, summary, photos) {
   return `
     <div class="ra-screen ra-review-screen">
-      <button type="button" class="ra-back" id="raBackToBuilder">&larr; Back to tasks</button>
-      <div class="ra-screen-title">Review</div>
+      <div class="ra-breadcrumb">
+        <span class="ra-crumb ra-crumb-link" id="raBackToBuilder"><i class="fas fa-tasks"></i> Tasks</span>
+        <span class="ra-crumb-sep">&rsaquo;</span>
+        <span class="ra-crumb ra-crumb-current">Review</span>
+      </div>
+      <div class="ra-screen-title"><i class="fas fa-clipboard-check"></i> Review &amp; Submit</div>
 
       ${createReviewHeaderSummary(header)}
-      ${createRiskSummaryTable(summary)}
+
+      <div class="ra-review-summary">
+        <div class="ra-review-summary-title">Risk Profile</div>
+        ${createReviewVerdict(summary)}
+        ${createRiskSummaryTable(summary)}
+      </div>
+
       <ul class="ra-review-list">${createReviewList(tasks)}</ul>
 
       <div id="raPhotoSection" class="ra-photo-section">
