@@ -1,142 +1,234 @@
-// Drives the risk assessment wizard: template pick, event header, one task card
-// at a time, review, submit. Structured after Js/GenericQuestioneerProcessor.js
-// so the two read alike.
-
-// Declared with var, not const: a top-level const does not become a property of
-// window, and the tests reach this through window.riskAssessmentState.
+// Drives the v2 risk assessment wizard: header page, then a self-built
+// task -> hazard -> control tree (unlimited at every level), then review +
+// optional photos + submit. There is no template picker and no Skip any
+// more — with a user-built list there is nothing to skip, the assessor
+// simply does not add what did not happen.
+//
+// Structured as three "screens" under one mount point (#raScreen) rather
+// than a single long form, because the source data is three levels deep and
+// no phone screen can show all three at once without turning into the very
+// 20-column spreadsheet this feature replaces:
+//   list  -> every task, collapsed, with a worst-category chip and a count
+//   task  -> one task's name + its hazards, collapsed
+//   hazard -> one hazard's full scoring form + its controls
+// review is a fourth, flat screen reached from the list once every task has
+// at least one hazard.
+//
+// Declared with var, not const: a top-level const does not become a property
+// of window, and the tests reach this through window.riskAssessmentState.
 var riskAssessmentState = {
-  formId: null,
-  formName: '',
-  header: {},
-  scale: { severity: [], probability: [] },
+  header: { activity: '', typeOfActivity: '', location: '', eventActivities: '', department: '', area: '' },
+  // Hardcoded fallback so the scoring selects are never empty even if
+  // getRiskScale is slow to answer - overwritten as soon as it does. Must
+  // match Controllers/api/RiskAssessmentController.cs's SeverityScale /
+  // ProbabilityScale; the server is still the source of truth for the
+  // labels, this is only a placeholder while that request is in flight.
+  scale: {
+    severity: [
+      { value: 1, label: 'Delay Only' },
+      { value: 2, label: 'Minor injury (FAC), minor damage' },
+      { value: 4, label: 'Lost Time Injury, illness, damage, multiple minor injuries' },
+      { value: 6, label: 'Major injury, disabling illness, major damage, multiple recordable injuries' },
+      { value: 8, label: 'Single death' },
+      { value: 10, label: 'Multiple deaths' },
+    ],
+    probability: [
+      { value: 1, label: 'Very unlikely' },
+      { value: 2, label: 'Unlikely' },
+      { value: 4, label: 'May happen' },
+      { value: 6, label: 'Likely' },
+      { value: 8, label: 'Very likely' },
+      { value: 10, label: 'Certain or imminent' },
+    ],
+  },
   tasks: [],
-  index: 0,
-  // Photos attach to the assessment as a whole, not per task - see
-  // handlePhotoSelect / renderPhotoList. Each entry is
-  // { key, name }: key is what uploadFiles returned (what gets sent back
-  // to saveRiskAssessment), name is the original filename, kept for display only.
+  // Which of the three builder screens is showing, and which task/hazard it
+  // is showing. taskIndex/hazardIndex are null on the list screen.
+  nav: { screen: 'list', taskIndex: null, hazardIndex: null },
+  // Photos attach to the assessment as a whole, not per task or hazard - see
+  // handlePhotoSelect / renderPhotoList. Each entry is { key, name }: key is
+  // what uploadFiles returned (what gets sent back to saveRiskAssessment),
+  // name is the original filename, kept for display only.
   photos: [],
 };
 
-function currentTask() {
-  return riskAssessmentState.tasks[riskAssessmentState.index];
+function makeHazard() {
+  return {
+    hazardText: '',
+    actOrCondition: 'Condition',
+    personAtRisk: '',
+    baseSeverity: 2,
+    baseProbability: 2,
+    controls: [],
+    residualSeverity: 2,
+    residualProbability: 2,
+  };
 }
 
-/** Counts tasks per category, base against residual. Skipped tasks are excluded. */
+function makeTask() {
+  return { taskName: '', hazards: [] };
+}
+
+function currentTask() {
+  return riskAssessmentState.tasks[riskAssessmentState.nav.taskIndex];
+}
+
+function currentHazard() {
+  const task = currentTask();
+  return task ? task.hazards[riskAssessmentState.nav.hazardIndex] : undefined;
+}
+
+/** Counts hazards per category, base against residual - the hazard is the scoring unit in v2, not the task. */
 function buildRiskSummary(tasks) {
   const empty = () => ({ 'VL': 0, 'L': 0, 'M': 0, 'M+': 0, 'H': 0, 'VH': 0 });
   const summary = { base: empty(), residual: empty() };
 
-  tasks.filter(t => !t.skipped).forEach(function (task) {
-    const base = evaluateRisk(task.baseSeverity, task.baseProbability);
-    const residual = evaluateRisk(task.residualSeverity, task.residualProbability);
-    if (base) summary.base[base.category]++;
-    if (residual) summary.residual[residual.category]++;
+  tasks.forEach(function (task) {
+    task.hazards.forEach(function (hazard) {
+      const base = evaluateRisk(hazard.baseSeverity, hazard.baseProbability);
+      const residual = evaluateRisk(hazard.residualSeverity, hazard.residualProbability);
+      if (base) summary.base[base.category]++;
+      if (residual) summary.residual[residual.category]++;
+    });
   });
 
   return summary;
 }
 
-function refreshChips() {
-  const task = currentTask();
-  if (!task) {
-    $('.ra-base-rating, .ra-residual-rating').text('-');
-    $('#raBaseCategory, #raResidualCategory').text('-').css('background-color', 'transparent');
+// ── Navigation ─────────────────────────────────────────────────────────────
+
+function render() {
+  const nav = riskAssessmentState.nav;
+
+  if (nav.screen === 'list') {
+    $('#raScreen').html(createListScreen(riskAssessmentState.tasks));
+  } else if (nav.screen === 'task') {
+    $('#raScreen').html(createTaskScreen(currentTask(), nav.taskIndex));
+  } else if (nav.screen === 'hazard') {
+    $('#raScreen').html(createHazardScreen(
+      currentTask(), currentHazard(), nav.taskIndex, nav.hazardIndex, riskAssessmentState.scale));
+  } else if (nav.screen === 'review') {
+    renderReview();
+  }
+}
+
+function goToList() {
+  riskAssessmentState.nav = { screen: 'list', taskIndex: null, hazardIndex: null };
+  $('#raError').text('');
+  render();
+}
+
+function goToTask(index) {
+  riskAssessmentState.nav = { screen: 'task', taskIndex: index, hazardIndex: null };
+  render();
+}
+
+function goToHazard(taskIndex, hazardIndex) {
+  riskAssessmentState.nav = { screen: 'hazard', taskIndex: taskIndex, hazardIndex: hazardIndex };
+  render();
+}
+
+/**
+ * Mirrors the server's own rejection rules (RiskAssessmentController.
+ * SaveRiskAssessment) so the assessor sees the problem before submitting
+ * rather than after a 400: no tasks at all, or a task with no hazards, named.
+ * A hazard with no controls is deliberately NOT checked here - that is an
+ * accepted, legitimate finding on the server, not an error.
+ */
+function tryGoToReview() {
+  if (!riskAssessmentState.tasks.length) {
+    $('#raError').text('Add at least one task before submitting.');
     return;
   }
 
-  const base = evaluateRisk(task.baseSeverity, task.baseProbability);
+  const emptyIndex = riskAssessmentState.tasks.findIndex(t => t.hazards.length === 0);
+  if (emptyIndex !== -1) {
+    const task = riskAssessmentState.tasks[emptyIndex];
+    const label = task.taskName ? `"${escapeHtml(task.taskName)}"` : `${emptyIndex + 1}`;
+    $('#raError').text(`Task ${label} needs at least one hazard before you can submit.`);
+    return;
+  }
+
+  $('#raError').text('');
+  riskAssessmentState.nav = { screen: 'review', taskIndex: null, hazardIndex: null };
+  render();
+}
+
+// ── Add / remove ─────────────────────────────────────────────────────────
+
+function addTask() {
+  riskAssessmentState.tasks.push(makeTask());
+  // Jump straight into the new task rather than leaving it collapsed on the
+  // list - there is nothing useful to look at on a task with no hazards yet.
+  goToTask(riskAssessmentState.tasks.length - 1);
+}
+
+function removeTask(index) {
+  riskAssessmentState.tasks.splice(index, 1);
+  goToList();
+}
+
+function addHazard() {
+  const task = currentTask();
+  if (!task) return;
+  task.hazards.push(makeHazard());
+  goToHazard(riskAssessmentState.nav.taskIndex, task.hazards.length - 1);
+}
+
+function removeHazard(taskIndex, hazardIndex) {
+  const task = riskAssessmentState.tasks[taskIndex];
+  if (!task) return;
+  task.hazards.splice(hazardIndex, 1);
+  goToTask(taskIndex);
+}
+
+function addControl() {
+  const hazard = currentHazard();
+  if (!hazard) return;
+  hazard.controls.push({ controlText: '' });
+  render();
+}
+
+function removeControl(index) {
+  const hazard = currentHazard();
+  if (!hazard) return;
+  hazard.controls.splice(index, 1);
+  render();
+}
+
+// ── Live chip update on the hazard screen ───────────────────────────────
+// Patches only the rating/category text rather than re-rendering the whole
+// screen, so a select change never disturbs focus on the free-text fields
+// around it.
+function updateHazardChips() {
+  const base = evaluateRisk(
+    parseInt($('.ra-base-severity').val(), 10), parseInt($('.ra-base-probability').val(), 10));
   $('.ra-base-rating').text(base ? base.rating : '-');
-  $('#raBaseCategory')
-    .text(base ? base.category : '-')
+  $('.ra-base-category').text(base ? base.category : '-')
     .css('background-color', base ? RISK_CATEGORY_COLOUR[base.category] : 'transparent');
 
-  const residual = evaluateRisk(task.residualSeverity, task.residualProbability);
+  const residual = evaluateRisk(
+    parseInt($('.ra-residual-severity').val(), 10), parseInt($('.ra-residual-probability').val(), 10));
   $('.ra-residual-rating').text(residual ? residual.rating : '-');
-  $('#raResidualCategory')
-    .text(residual ? residual.category : '-')
+  $('.ra-residual-category').text(residual ? residual.category : '-')
     .css('background-color', residual ? RISK_CATEGORY_COLOUR[residual.category] : 'transparent');
 }
 
-/** Copies the visible card back into state. Called before any navigation. */
-function captureCard() {
-  const task = currentTask();
-  if (!task) return;
-
-  // Only a task added on site renders these three as inputs (see
-  // createRiskAssessmentCard) - a template-derived task keeps them as
-  // read-only text, so there is nothing to read back for it.
-  if (task.riskAssessmentRowId === null) {
-    task.taskName = $('.ra-task-name-input').val() || '';
-    task.hazard = $('.ra-hazard-input').val() || '';
-    task.hazardDescription = $('.ra-hazard-description-input').val() || '';
-  }
-
-  task.actOrCondition = $('.ra-actcond').val();
-  task.personAtRisk = $('.ra-person').val();
-  task.baseSeverity = parseInt($('.ra-base-severity').val(), 10);
-  task.baseProbability = parseInt($('.ra-base-probability').val(), 10);
-  task.additionalControl = $('.ra-control').val();
-  task.residualSeverity = parseInt($('.ra-residual-severity').val(), 10);
-  task.residualProbability = parseInt($('.ra-residual-probability').val(), 10);
-}
-
-function renderCard() {
-  const state = riskAssessmentState;
-  const task = currentTask();
-
-  $('#riskAssessmentCard').html(
-    createRiskAssessmentCard(task, state.index, state.tasks.length, state.scale));
-
-  // A template with zero rows (or every task removed) has no card to move
-  // between - disable both, rather than let Back/Next throw on a missing task.
-  $('#raBack').prop('disabled', !task || state.index === 0);
-  $('#raNext').prop('disabled', !task || state.index === state.tasks.length - 1);
-  refreshChips();
-}
-
-function goTo(index) {
-  captureCard();
-  riskAssessmentState.index = Math.max(0, Math.min(index, riskAssessmentState.tasks.length - 1));
-  renderCard();
-}
-
-function addTask() {
-  captureCard();
-  riskAssessmentState.tasks.push({
-    riskAssessmentRowId: null,   // marks a task added on site, not planned
-    sortOrder: riskAssessmentState.tasks.length + 1,
-    taskName: '',
-    hazard: '',
-    actOrCondition: 'Condition',
-    personAtRisk: '',
-    hazardDescription: '',
-    baseSeverity: 2,
-    baseProbability: 2,
-    additionalControl: '',
-    residualSeverity: 2,
-    residualProbability: 2,
-    skipped: false,
-  });
-  riskAssessmentState.index = riskAssessmentState.tasks.length - 1;
-  renderCard();
-}
+// ── Photos (review screen) ──────────────────────────────────────────────
 
 function renderPhotoList() {
   $('#raPhotoList').html(riskAssessmentPhotoList(riskAssessmentState.photos));
 }
 
 /**
- * Uploads every file picked in one go, the same shape as the checklist
- * wizard's handleChecklistPhotoSelect (Js/GenericQuestioneerProcessor.js) -
- * mirrored because the server endpoint is a deliberate mirror of
- * api/checklist/uploadFiles. Unlike that precedent, this goes through
+ * Uploads every file picked in one go. Mirrors the checklist wizard's
+ * handleChecklistPhotoSelect (Js/GenericQuestioneerProcessor.js) - the server
+ * endpoint is a deliberate mirror of api/checklist/uploadFiles. Goes through
  * sendRequestWithFiles rather than a bespoke $.ajax, so a failed upload runs
  * through the shared handleRequestError (session-expiry handling, the error
- * dialog, server-side logging) instead of a second, local error path -
- * and critically, the failure never adds anything to
- * riskAssessmentState.photos, so a failed upload cannot end up silently
- * submitted as if it succeeded.
+ * dialog, server-side logging) instead of a second, local error path - and
+ * critically, the failure never adds anything to riskAssessmentState.photos,
+ * so a failed upload cannot end up silently submitted as if it succeeded.
  */
 function handlePhotoSelect(input) {
   const files = input.files;
@@ -174,97 +266,56 @@ function handlePhotoSelect(input) {
   input.value = '';
 }
 
+// ── Review + submit ──────────────────────────────────────────────────────
+
 function renderReview() {
-  captureCard();
   const summary = buildRiskSummary(riskAssessmentState.tasks);
-  const categories = ['VL', 'L', 'M', 'M+', 'H', 'VH'];
-
-  const headerCells = categories.map(c => `<th>${c}</th>`).join('');
-  const baseCells = categories.map(c => `<td>${summary.base[c]}</td>`).join('');
-  const residualCells = categories.map(c => `<td>${summary.residual[c]}</td>`).join('');
-
-  const rows = riskAssessmentState.tasks.map(function (task) {
-    const base = evaluateRisk(task.baseSeverity, task.baseProbability);
-    const residual = evaluateRisk(task.residualSeverity, task.residualProbability);
-    const label = task.skipped
-      ? '<span class="ra-skipped">Skipped</span>'
-      : `${base ? base.category : '-'} &rarr; ${residual ? residual.category : '-'}`;
-    return `<li><strong>${escapeHtml(task.taskName) || '(unnamed task)'}</strong> ${label}</li>`;
-  }).join('');
-
-  $('#riskAssessmentCard').hide();
-  $('#raSummary').html(`
-    <h3>Review</h3>
-    <table class="table table-bordered ra-summary-table">
-      <thead><tr><th></th>${headerCells}</tr></thead>
-      <tbody>
-        <tr><th>Base</th>${baseCells}</tr>
-        <tr><th>Residual</th>${residualCells}</tr>
-      </tbody>
-    </table>
-    <ul class="ra-review-list">${rows}</ul>
-  `).show();
-
-  $('#raPhotoSection').show();
-  renderPhotoList();
-
-  $('#raSubmit').show();
+  $('#raScreen').html(createReviewScreen(
+    riskAssessmentState.header, riskAssessmentState.tasks, summary, riskAssessmentState.photos));
 }
 
 function submitRiskAssessment() {
-  captureCard();
-
-  if (!riskAssessmentState.tasks.length) {
-    $('#raError').text('Add at least one task before submitting.');
-    return;
-  }
-
-  // A task the assessor never named (and never marked Skip either) would
-  // otherwise be silently dropped from the entries below - block the submit
-  // and say exactly which task, instead of navigating away as though it saved.
-  const unnamed = riskAssessmentState.tasks
-    .map((task, position) => ({ task, position }))
-    .filter(({ task }) => !task.skipped && (!task.taskName || task.taskName.trim() === ''));
-
-  if (unnamed.length) {
-    const positions = unnamed.map(({ position }) => position + 1).join(', ');
-    $('#raError').text(`Task ${positions} needs a name before you can submit - fill it in or tap Skip.`);
-    return;
-  }
-
-  $('#raError').text('');
-
   const payload = {
-    riskAssessmentFormId: riskAssessmentState.formId,
-    formName: riskAssessmentState.formName,
-    eventName: riskAssessmentState.header.eventName,
+    activity: riskAssessmentState.header.activity,
+    typeOfActivity: riskAssessmentState.header.typeOfActivity,
     location: riskAssessmentState.header.location,
+    eventActivities: riskAssessmentState.header.eventActivities,
     department: riskAssessmentState.header.department,
     area: riskAssessmentState.header.area,
+    // The backend parses this with int.TryParse - a number fails to bind.
     siteId: String(getValue('siteId') || '0'),
-    // The signed-in user's email is stored under userName, not email.
+    // Ignored server-side (identity comes from the token), kept for the
+    // audit trail / debugging, same idea as v1.
     reportedBy: getValue('userName'),
-    entries: riskAssessmentState.tasks.map((task, position) => ({
-      riskAssessmentRowId: task.riskAssessmentRowId,
-      sortOrder: position + 1,
-      taskName: task.taskName,
-      hazard: task.hazard,
-      actOrCondition: task.actOrCondition,
-      personAtRisk: task.personAtRisk,
-      hazardDescription: task.hazardDescription,
-      baseSeverity: task.baseSeverity,
-      baseProbability: task.baseProbability,
-      additionalControl: task.additionalControl,
-      residualSeverity: task.residualSeverity,
-      residualProbability: task.residualProbability,
-      skipped: !!task.skipped,
-    })),
+    tasks: riskAssessmentState.tasks.map(function (task, taskIndex) {
+      return {
+        sortOrder: taskIndex + 1,
+        taskName: task.taskName,
+        hazards: task.hazards.map(function (hazard, hazardIndex) {
+          return {
+            sortOrder: hazardIndex + 1,
+            hazardText: hazard.hazardText,
+            actOrCondition: hazard.actOrCondition,
+            personAtRisk: hazard.personAtRisk,
+            baseSeverity: hazard.baseSeverity,
+            baseProbability: hazard.baseProbability,
+            residualSeverity: hazard.residualSeverity,
+            residualProbability: hazard.residualProbability,
+            // Ratings/categories are NOT sent - the server recomputes both
+            // from RiskMatrix and ignores anything the client sends for them.
+            controls: hazard.controls.map(function (control, controlIndex) {
+              return { sortOrder: controlIndex + 1, controlText: control.controlText };
+            }),
+          };
+        }),
+      };
+    }),
   };
 
-  // Only sent when there is at least one photo - CheckList.Files is a JSON
-  // string array, and an empty/absent field reads more cleanly on the server
-  // than a stringified empty array would ("[]" is still a value; omitting the
-  // key is not).
+  // Only sent when there is at least one photo - RiskAssessment.Files is a
+  // JSON string, and an empty/absent field reads more cleanly on the server
+  // than a stringified empty array would ("[]" is still a value; omitting
+  // the key is not).
   if (riskAssessmentState.photos.length) {
     payload.files = JSON.stringify(riskAssessmentState.photos.map(p => p.key));
   }
@@ -276,124 +327,135 @@ function submitRiskAssessment() {
     function () { window.location.href = '/Pages/reporting/reporting.html'; });
 }
 
-/**
- * Shown once between picking a template and the first task card. eventName
- * and location are prefilled from the template as a starting point, but the
- * template's location/name describe the plan, not necessarily what actually
- * happened - so both stay editable, and department/area (which the template
- * never carries) are captured here for the first time.
- */
-function showHeaderStep() {
-  $('#raError').text('');
-  $('#raEventName').val(riskAssessmentState.header.eventName || '');
-  $('#raLocation').val(riskAssessmentState.header.location || '');
-  $('#raDepartment').val(riskAssessmentState.header.department || '');
-  $('#raArea').val(riskAssessmentState.header.area || '');
-  $('#raHeaderStep').show();
-}
+// ── Header gate ──────────────────────────────────────────────────────────
 
 function confirmHeader() {
-  const eventName = $('#raEventName').val().trim();
-  if (!eventName) {
-    $('#raError').text('Enter an event name before continuing.');
+  const activity = $('#raActivity').val().trim();
+  if (!activity) {
+    $('#raError').text('Enter the activity before continuing.');
     return;
   }
 
-  riskAssessmentState.header.eventName = eventName;
+  riskAssessmentState.header.activity = activity;
+  riskAssessmentState.header.typeOfActivity = $('#raTypeOfActivity').val().trim();
   riskAssessmentState.header.location = $('#raLocation').val().trim();
+  riskAssessmentState.header.eventActivities = $('#raEventActivities').val().trim();
   riskAssessmentState.header.department = $('#raDepartment').val().trim();
   riskAssessmentState.header.area = $('#raArea').val().trim();
 
   $('#raError').text('');
   $('#raHeaderStep').hide();
-  $('#riskAssessmentCard, .ra-nav, .ra-actions').show();
-  renderCard();
-}
-
-function loadTemplate(formId) {
-  sendRequest('api/RiskAssessment/getRiskScale', 'GET', null, function (scale) {
-    riskAssessmentState.scale = scale;
-
-    sendRequest(`api/RiskAssessment/getRiskAssessmentForm?formId=${formId}`, 'GET', null, function (form) {
-      riskAssessmentState.formId = form.id;
-      riskAssessmentState.formName = form.name;
-      riskAssessmentState.header.location = form.location;
-      riskAssessmentState.header.eventName = form.eventActivity;
-
-      riskAssessmentState.tasks = form.rows.map(row => ({
-        riskAssessmentRowId: row.id,
-        sortOrder: row.sortOrder,
-        taskName: row.taskName,
-        hazard: row.hazard,
-        actOrCondition: row.actOrCondition,
-        personAtRisk: row.personAtRisk,
-        hazardDescription: row.hazardDescription,
-        baseSeverity: row.baseSeverity,
-        baseProbability: row.baseProbability,
-        additionalControl: row.suggestedAdditionalControl,
-        residualSeverity: row.residualSeverity,
-        residualProbability: row.residualProbability,
-        skipped: false,
-      }));
-
-      showHeaderStep();
-    });
-  });
+  $('#raScreen').show();
+  riskAssessmentState.tasks = [makeTask()];
+  goToList();
 }
 
 $(function () {
-  const params = new URLSearchParams(window.location.search);
-  const formId = params.get('formId');
-
-  if (formId) {
-    loadTemplate(formId);
-  } else {
-    sendRequest('api/RiskAssessment/getRiskAssessmentForms', 'GET', null, function (forms) {
-      $('#raTemplates').html(forms.map(form => `
-        <button class="usafe-card" onclick="window.location.href='?formId=${form.id}'">
-          <span class="usafe-card-title">${escapeHtml(form.name)}</span>
-          <span class="ra-template-meta">${escapeHtml(form.taskCount)} tasks</span>
-        </button>`).join(''));
-    });
-  }
-
-  $('#riskAssessmentRoot')
-    .on('change', '.ra-base-severity, .ra-base-probability, .ra-residual-severity, .ra-residual-probability',
-      function () { captureCard(); refreshChips(); });
-
-  $('#raNext').on('click', () => goTo(riskAssessmentState.index + 1));
-  $('#raBack').on('click', () => goTo(riskAssessmentState.index - 1));
-  $('#raSkip').on('click', function () {
-    captureCard();
-    const task = currentTask();
-    if (!task) return;
-    task.skipped = true;
-
-    // On the last card there is nowhere left to advance to card-wise - move
-    // on to Review instead of re-rendering the same card with no visible
-    // change. The skipped banner (see createRiskAssessmentCard) is what makes
-    // the skip visible when this card is revisited via Back.
-    if (riskAssessmentState.index === riskAssessmentState.tasks.length - 1) {
-      renderReview();
-    } else {
-      goTo(riskAssessmentState.index + 1);
+  // The scale values ({1,2,4,6,8,10}) never change, only their labels can -
+  // the hardcoded default above keeps the selects populated immediately;
+  // this just refreshes the labels from the server, which is the source of
+  // truth for them (see Controllers/api/RiskAssessmentController.cs).
+  sendRequest('api/RiskAssessment/getRiskScale', 'GET', null, function (scale) {
+    if (scale && scale.severity && scale.probability) {
+      riskAssessmentState.scale = scale;
     }
   });
-  $('#raAddTask').on('click', addTask);
-  $('#raReview').on('click', renderReview);
-  $('#raSubmit').on('click', submitRiskAssessment);
-  $('#raHeaderNext').on('click', confirmHeader);
+
+  // ── List screen ──
+  $('#riskAssessmentRoot').on('click', '.ra-task-open', function () {
+    goToTask(parseInt($(this).data('task-index'), 10));
+  });
+  $('#riskAssessmentRoot').on('click', '.ra-task-remove', function (e) {
+    e.stopPropagation();
+    removeTask(parseInt($(this).data('task-index'), 10));
+  });
+  $('#riskAssessmentRoot').on('click', '#raAddTask', addTask);
+  $('#riskAssessmentRoot').on('click', '#raReviewBtn', tryGoToReview);
+
+  // ── Task screen ──
+  $('#riskAssessmentRoot').on('click', '#raBackToList', goToList);
+  $('#riskAssessmentRoot').on('input', '.ra-task-name-input', function () {
+    const task = currentTask();
+    if (task) task.taskName = $(this).val();
+  });
+  $('#riskAssessmentRoot').on('click', '.ra-hazard-open', function () {
+    goToHazard(riskAssessmentState.nav.taskIndex, parseInt($(this).data('hazard-index'), 10));
+  });
+  $('#riskAssessmentRoot').on('click', '.ra-hazard-remove', function (e) {
+    e.stopPropagation();
+    removeHazard(riskAssessmentState.nav.taskIndex, parseInt($(this).data('hazard-index'), 10));
+  });
+  $('#riskAssessmentRoot').on('click', '#raAddHazard', addHazard);
+  $('#riskAssessmentRoot').on('click', '#raRemoveTask', function () {
+    removeTask(riskAssessmentState.nav.taskIndex);
+  });
+
+  // ── Hazard screen ──
+  $('#riskAssessmentRoot').on('click', '#raBackToTask', function () {
+    goToTask(riskAssessmentState.nav.taskIndex);
+  });
+  $('#riskAssessmentRoot').on('input', '.ra-hazard-text', function () {
+    const hazard = currentHazard();
+    if (hazard) hazard.hazardText = $(this).val();
+  });
+  $('#riskAssessmentRoot').on('click', '.ra-toggle-btn', function () {
+    const hazard = currentHazard();
+    if (!hazard) return;
+    hazard.actOrCondition = $(this).data('value');
+    $(this).addClass('active').siblings('.ra-toggle-btn').removeClass('active');
+  });
+  $('#riskAssessmentRoot').on('input', '.ra-person', function () {
+    const hazard = currentHazard();
+    if (hazard) hazard.personAtRisk = $(this).val();
+  });
+  $('#riskAssessmentRoot').on('change',
+    '.ra-base-severity, .ra-base-probability, .ra-residual-severity, .ra-residual-probability',
+    function () {
+      const hazard = currentHazard();
+      if (hazard) {
+        hazard.baseSeverity = parseInt($('.ra-base-severity').val(), 10);
+        hazard.baseProbability = parseInt($('.ra-base-probability').val(), 10);
+        hazard.residualSeverity = parseInt($('.ra-residual-severity').val(), 10);
+        hazard.residualProbability = parseInt($('.ra-residual-probability').val(), 10);
+      }
+      updateHazardChips();
+    });
+  $('#riskAssessmentRoot').on('click', '#raAddControl', addControl);
+  $('#riskAssessmentRoot').on('click', '.ra-control-remove', function () {
+    removeControl(parseInt($(this).data('control-index'), 10));
+  });
+  $('#riskAssessmentRoot').on('input', '.ra-control-text', function () {
+    const hazard = currentHazard();
+    if (!hazard) return;
+    const index = parseInt($(this).data('control-index'), 10);
+    if (hazard.controls[index]) hazard.controls[index].controlText = $(this).val();
+  });
+  $('#riskAssessmentRoot').on('click', '#raRemoveHazard', function () {
+    removeHazard(riskAssessmentState.nav.taskIndex, riskAssessmentState.nav.hazardIndex);
+  });
+
+  // ── Review screen ──
+  $('#riskAssessmentRoot').on('click', '#raBackToBuilder', goToList);
+  $('#riskAssessmentRoot').on('click', '#raSubmit', submitRiskAssessment);
+  $('#riskAssessmentRoot').on('click', '#raPhotoAdd', () => $('#raPhotoInput').trigger('click'));
+  $('#riskAssessmentRoot').on('change', '#raPhotoInput', function () { handlePhotoSelect(this); });
+  $('#riskAssessmentRoot').on('click', '.ra-photo-remove', function () {
+    const index = parseInt($(this).data('index'), 10);
+    riskAssessmentState.photos.splice(index, 1);
+    renderPhotoList();
+  });
 
   // A failed upload must never leave the assessor stuck. sendRequestWithFiles
-  // (Helpers/HttpHandler.js:168-186, shared with every other page - not ours
-  // to change) has no complete/always hook of its own; every failure routes to
+  // (Helpers/HttpHandler.js - shared with every other page, not ours to
+  // change) has no complete/always hook of its own; every failure routes to
   // the shared handleRequestError, which re-enables every button on the page
-  // and puts up its own error dialog - but it knows nothing about this page's
-  // own "Uploading..." status text, which would otherwise sit there forever.
-  // jQuery fires the ajaxComplete event for every request, success or failure,
-  // unless the caller passes global:false (sendRequestWithFiles does not), so
-  // that is the one hook available here without touching the shared helper.
-  // Scoped to the upload endpoint by URL so it never reacts to anything else.
+  // and puts up its own error dialog - but it knows nothing about this
+  // page's own "Uploading..." status text, which would otherwise sit there
+  // forever. jQuery fires ajaxComplete for every request, success or
+  // failure, unless the caller passes global:false (sendRequestWithFiles
+  // does not), so that is the one hook available here without touching the
+  // shared helper. Scoped to the upload endpoint by URL so it never reacts
+  // to anything else.
   $(document).on('ajaxComplete.raPhotoUpload', function (event, xhr, settings) {
     if (!settings || (settings.url || '').indexOf('api/RiskAssessment/uploadFiles') === -1) return;
     if (xhr.status >= 200 && xhr.status < 300) return; // the success callback above already handled this
@@ -401,18 +463,10 @@ $(function () {
     // By the time this runs, handleRequestError has already re-enabled every
     // button and shown its own dialog - riskAssessmentState.tasks was never
     // touched by the failed upload, so the assessment itself is untouched.
-    // Make the recovery visible and point at the path that keeps the work:
-    // submitting without this photo beats losing everything to a reload.
     $('#raSubmit').prop('disabled', false);
     $('#raPhotoStatus').addClass('text-danger')
       .text('Photo upload failed. Your answers are safe - retry, or Submit without this photo.');
   });
 
-  $('#raPhotoAdd').on('click', () => $('#raPhotoInput').trigger('click'));
-  $('#raPhotoInput').on('change', function () { handlePhotoSelect(this); });
-  $('#raPhotoList').on('click', '.ra-photo-remove', function () {
-    const index = parseInt($(this).data('index'), 10);
-    riskAssessmentState.photos.splice(index, 1);
-    renderPhotoList();
-  });
+  $('#raHeaderNext').on('click', confirmHeader);
 });

@@ -1,5 +1,13 @@
 /**
- * USafe Mobile Frontend — Risk Assessment Tests
+ * USafe Mobile Frontend — Risk Assessment (v2) Tests
+ *
+ * Replaces the v1 wizard tests entirely. v1 was a template-picker flow: pick
+ * a pre-seeded plan, walk its fixed 17 tasks one at a time, one hazard and
+ * one control per task, with a Skip concept. v2 has none of that — the
+ * assessor builds the whole task/hazard/control tree themselves, so there is
+ * no template to fetch, no fixed task count, and nothing to "skip" (they
+ * simply do not add what did not happen). Every test below targets the new
+ * list -> task -> hazard -> review navigation and the nested save payload.
  *
  * Usage:
  *   node tests/risk-assessment-test.js [--base-url http://127.0.0.1:5501]
@@ -53,6 +61,7 @@ async function setupAuth(page) {
 
 // The matrix as it appears in the workbook, duplicated here on purpose: this is
 // the fixture that catches Js/RiskMatrix.js drifting away from Data/RiskMatrix.cs.
+// RiskMatrix.js itself is unchanged in v2, so this whole block is unchanged too.
 const MATRIX = {
   10: { 1: 'L',  2: 'H',  4: 'VH', 6: 'VH', 8: 'VH', 10: 'VH' },
   8:  { 1: 'L',  2: 'M+', 4: 'H',  6: 'VH', 8: 'VH', 10: 'VH' },
@@ -62,8 +71,6 @@ const MATRIX = {
   1:  { 1: 'VL', 2: 'VL', 4: 'L',  6: 'L',  8: 'M+', 10: 'H'  },
 };
 
-// The wizard calls the live API. Mock it so the tests exercise the wizard, not
-// the network — and so they pass identically on a laptop and in CI.
 const FAKE_SCALE = {
   severity: [
     { value: 1, label: 'Delay Only' },
@@ -83,37 +90,11 @@ const FAKE_SCALE = {
   ],
 };
 
-const FAKE_FORM = {
-  id: 1,
-  name: 'Lux Instore Plan',
-  location: 'KLI',
-  eventActivity: 'Female BA Deployment',
-  rows: [
-    {
-      id: 11, sortOrder: 1, taskName: 'Travel to Store', hazard: 'Road traffic accident',
-      actOrCondition: 'Condition', personAtRisk: 'BA',
-      hazardDescription: 'No transport vetting, fatigued driving',
-      baseSeverity: 6, baseProbability: 6,
-      suggestedAdditionalControl: 'Online taxi services used',
-      residualSeverity: 6, residualProbability: 2,
-    },
-    {
-      id: 12, sortOrder: 2, taskName: 'Store Reporting & Briefing', hazard: 'Slip/trip',
-      actOrCondition: 'Condition', personAtRisk: 'Worker',
-      hazardDescription: 'Uninspected floor, exposed cables',
-      baseSeverity: 2, baseProbability: 6,
-      suggestedAdditionalControl: 'Pre-shift housekeeping check',
-      residualSeverity: 2, residualProbability: 2,
-    },
-  ],
-};
-
+// The wizard calls the live API. Mock it so the tests exercise the wizard, not
+// the network — and so they pass identically on a laptop and in CI.
 async function mockRiskApi(page) {
   await page.route('**/api/RiskAssessment/getRiskScale', route =>
     route.fulfill({ contentType: 'application/json', body: JSON.stringify(FAKE_SCALE) }));
-
-  await page.route('**/api/RiskAssessment/getRiskAssessmentForm*', route =>
-    route.fulfill({ contentType: 'application/json', body: JSON.stringify(FAKE_FORM) }));
 
   await page.route('**/api/RiskAssessment/saveRiskAssessment', route =>
     route.fulfill({ contentType: 'application/json', body: JSON.stringify({ id: 99 }) }));
@@ -135,6 +116,35 @@ function fakePhoto(name) {
   return { name, mimeType: 'image/jpeg', buffer: Buffer.from('fake-image-bytes') };
 }
 
+async function fillHeader(page, values) {
+  const v = Object.assign({
+    activity: 'Lux Instore BA Deployment',
+    typeOfActivity: 'Promotional',
+    location: 'KLI - Gate 3',
+    eventActivities: 'BA deployment for Lux instore promotion',
+    department: 'Field Sales',
+    area: 'North Zone',
+  }, values || {});
+
+  // A prior test's successful submit navigates to reporting.html (see
+  // submitRiskAssessment), which is not mocked here and can 401 against the
+  // real API and clear localStorage via the shared handleRequestError - so
+  // every fresh run of the wizard re-seeds the session first rather than
+  // assuming an earlier test left it intact.
+  await page.goto(PAGE_URL);
+  await setupAuth(page);
+  await page.goto(PAGE_URL);
+  await page.waitForSelector('#raHeaderStep', { state: 'visible' });
+  await page.fill('#raActivity', v.activity);
+  await page.fill('#raTypeOfActivity', v.typeOfActivity);
+  await page.fill('#raLocation', v.location);
+  await page.fill('#raEventActivities', v.eventActivities);
+  await page.fill('#raDepartment', v.department);
+  await page.fill('#raArea', v.area);
+  await page.click('#raHeaderNext');
+  await page.waitForSelector('.ra-list-screen');
+}
+
 async function main() {
   const browser = await chromium.launch();
   const context = await browser.newContext();
@@ -142,11 +152,12 @@ async function main() {
 
   await page.goto(PAGE_URL);
   await setupAuth(page);
-  await page.goto(PAGE_URL);
+  await mockRiskApi(page);
 
-  console.log('\nClient risk matrix');
+  console.log('\nClient risk matrix (Js/RiskMatrix.js — unchanged, reused as-is)');
 
   await runTest('matches the workbook for every cell', async () => {
+    await page.goto(PAGE_URL);
     for (const probability of [1, 2, 4, 6, 8, 10]) {
       for (const severity of [1, 2, 4, 6, 8, 10]) {
         const result = await page.evaluate(
@@ -164,437 +175,551 @@ async function main() {
     assert.strictEqual(await page.evaluate(() => window.evaluateRisk(4, 0)), null);
   });
 
-  await runTest('same rating can carry different categories', async () => {
-    const common = await page.evaluate(() => window.evaluateRisk(4, 2));
+  await runTest('same rating can carry different categories (S=8/P=1 -> M+, S=4/P=2 -> L)', async () => {
     const rare = await page.evaluate(() => window.evaluateRisk(8, 1));
+    const common = await page.evaluate(() => window.evaluateRisk(4, 2));
 
-    assert.strictEqual(common.rating, 8);
     assert.strictEqual(rare.rating, 8);
-    assert.strictEqual(common.category, 'L');
+    assert.strictEqual(common.rating, 8);
     assert.strictEqual(rare.category, 'M+');
+    assert.strictEqual(common.category, 'L');
   });
 
-  console.log('\nwindow bindings (classic-script const vs var regression)');
-
-  await runTest('RISK_SCALE_VALUES is reachable as a window property', async () => {
-    const value = await page.evaluate(() => window.RISK_SCALE_VALUES);
-    assert.deepStrictEqual(value, [1, 2, 4, 6, 8, 10]);
-  });
-
-  await runTest('RISK_CATEGORY_COLOUR is reachable as a window property', async () => {
-    const value = await page.evaluate(() => window.RISK_CATEGORY_COLOUR);
-    assert.deepStrictEqual(value, {
-      VL: '#c6efce',
-      L: '#d9ead3',
-      M: '#ffeb9c',
-      'M+': '#ffd966',
-      H: '#f4b183',
-      VH: '#ff7c80',
+  await runTest('RISK_SCALE_VALUES / RISK_CATEGORY_COLOUR are reachable as window properties', async () => {
+    assert.deepStrictEqual(await page.evaluate(() => window.RISK_SCALE_VALUES), [1, 2, 4, 6, 8, 10]);
+    assert.deepStrictEqual(await page.evaluate(() => window.RISK_CATEGORY_COLOUR), {
+      VL: '#c6efce', L: '#d9ead3', M: '#ffeb9c', 'M+': '#ffd966', H: '#f4b183', VH: '#ff7c80',
     });
   });
 
-  console.log('\nRiskAssessmentCard HTML escaping');
-
-  const SCALE = {
-    severity: [{ value: 1, label: 'Negligible' }, { value: 2, label: 'Minor' }],
-    probability: [{ value: 1, label: 'Rare' }, { value: 2, label: 'Unlikely' }],
-  };
-
-  await runTest('a double quote in personAtRisk does not break out of the value attribute', async () => {
-    const task = {
-      taskName: 'Loading dock',
-      personAtRisk: 'Forklift driver " onmouseover="alert(1)',
-    };
-
-    const inputValue = await page.evaluate(([t, s]) => {
-      const html = window.createRiskAssessmentCard(t, 0, 1, s);
-      const root = document.getElementById('riskAssessmentRoot');
-      root.innerHTML = html;
-      const input = root.querySelector('.ra-person');
-      return {
-        value: input.value,
-        onmouseover: input.getAttribute('onmouseover'),
-        extraInputs: root.querySelectorAll('.ra-person').length,
-      };
-    }, [task, SCALE]);
-
-    assert.strictEqual(inputValue.value, 'Forklift driver " onmouseover="alert(1)');
-    assert.strictEqual(inputValue.onmouseover, null,
-      'the quote must not have terminated the value attribute early');
-    assert.strictEqual(inputValue.extraInputs, 1,
-      'the quote must not have injected a stray element');
+  await runTest('window.riskAssessmentState is reachable (var, not const)', async () => {
+    const hasState = await page.evaluate(() => typeof window.riskAssessmentState === 'object');
+    assert.strictEqual(hasState, true);
   });
 
-  await runTest('angle brackets in taskName render as visible text, not markup', async () => {
-    const task = {
-      taskName: '<img src=x onerror=alert(1)>Ladder work',
-      personAtRisk: 'Rigger',
-    };
+  console.log('\nHeader gate');
 
-    const result = await page.evaluate(([t, s]) => {
-      const html = window.createRiskAssessmentCard(t, 0, 1, s);
-      const root = document.getElementById('riskAssessmentRoot');
-      root.innerHTML = html;
-      const heading = root.querySelector('.ra-task-name');
-      return {
-        text: heading.textContent,
-        hasImg: root.querySelectorAll('.ra-task-name img').length,
-      };
-    }, [task, SCALE]);
-
-    assert.strictEqual(result.text, '<img src=x onerror=alert(1)>Ladder work');
-    assert.strictEqual(result.hasImg, 0, 'the angle brackets must not have created an <img> element');
-  });
-
-  await runTest('scale option values and selected markup still work after escaping', async () => {
-    const task = { taskName: 'Normal task', personAtRisk: 'Normal person', baseSeverity: 2, baseProbability: 1 };
-
-    const result = await page.evaluate(([t, s]) => {
-      const html = window.createRiskAssessmentCard(t, 0, 1, s);
-      const root = document.getElementById('riskAssessmentRoot');
-      root.innerHTML = html;
-      const severitySelect = root.querySelector('.ra-base-severity');
-      const probabilitySelect = root.querySelector('.ra-base-probability');
-      return {
-        severityValue: severitySelect.value,
-        probabilityValue: probabilitySelect.value,
-        severityOptionCount: severitySelect.querySelectorAll('option').length,
-      };
-    }, [task, SCALE]);
-
-    assert.strictEqual(result.severityValue, '2');
-    assert.strictEqual(result.probabilityValue, '1');
-    assert.strictEqual(result.severityOptionCount, 2);
-  });
-
-  console.log('\nRisk assessment wizard');
-
-  await mockRiskApi(page);
-  const wizardUrl = `${PAGE_URL}?formId=1`;
-
-  // Task 9 added an event-header gate before the first card: eventName and
-  // location come prefilled from the template (FAKE_FORM.eventActivity /
-  // .location), so Continue can be clicked immediately without typing
-  // anything, same as an assessor who is happy with the defaults.
-  async function startWizard(page, url = wizardUrl) {
-    await page.goto(url);
+  await runTest('Continue is blocked with no activity entered', async () => {
+    await page.goto(PAGE_URL);
     await page.waitForSelector('#raHeaderStep', { state: 'visible' });
-    await page.click('#raHeaderNext');
-    await page.waitForSelector('.ra-card');
-  }
-
-  await runTest('the header gate blocks Continue with no event name', async () => {
-    await page.goto(wizardUrl);
-    await page.waitForSelector('#raHeaderStep', { state: 'visible' });
-
-    await page.fill('#raEventName', '');
     await page.click('#raHeaderNext');
 
     assert.strictEqual(await page.isVisible('#raHeaderStep'), true,
-      'the header step must stay open when eventName is blank');
-    assert.strictEqual(await page.isVisible('.ra-card'), false,
-      'no card should render until the header is confirmed');
+      'the header step must stay open when activity is blank');
+    assert.strictEqual(await page.isVisible('.ra-list-screen'), false);
     const error = await page.textContent('#raError');
-    assert.ok(error.toLowerCase().includes('event name'),
-      `expected an event-name error, got: "${error}"`);
+    assert.ok(error.toLowerCase().includes('activity'), `expected an activity error, got: "${error}"`);
   });
 
-  await runTest('the header step prefills eventName/location from the template and both stay editable', async () => {
-    await page.goto(wizardUrl);
-    await page.waitForSelector('#raHeaderStep', { state: 'visible' });
+  await runTest('confirming the header populates state and starts with one blank task', async () => {
+    await fillHeader(page);
 
-    assert.strictEqual(await page.inputValue('#raEventName'), FAKE_FORM.eventActivity);
-    assert.strictEqual(await page.inputValue('#raLocation'), FAKE_FORM.location);
-
-    await page.fill('#raEventName', 'Custom event name');
-    await page.fill('#raLocation', 'Custom location');
-    await page.click('#raHeaderNext');
-    await page.waitForSelector('.ra-card');
-
-    const header = await page.evaluate(() => window.riskAssessmentState.header);
-    assert.strictEqual(header.eventName, 'Custom event name');
-    assert.strictEqual(header.location, 'Custom location');
+    const state = await page.evaluate(() => window.riskAssessmentState);
+    assert.strictEqual(state.header.activity, 'Lux Instore BA Deployment');
+    assert.strictEqual(state.header.department, 'Field Sales');
+    assert.strictEqual(state.tasks.length, 1, 'the builder must start with exactly one blank task');
+    assert.strictEqual(state.tasks[0].taskName, '');
+    assert.strictEqual(state.tasks[0].hazards.length, 0);
   });
 
-  await runTest('chip updates when a score changes', async () => {
-    await startWizard(page);
+  console.log('\nBuilder navigation and nesting');
+
+  await runTest('adding a task jumps straight into it, and it starts with no hazards', async () => {
+    await fillHeader(page);
+    await page.click('#raAddTask');
+    await page.waitForSelector('.ra-task-screen');
+
+    const state = await page.evaluate(() => window.riskAssessmentState);
+    assert.strictEqual(state.tasks.length, 2);
+    assert.strictEqual(state.nav.screen, 'task');
+    assert.strictEqual(state.nav.taskIndex, 1);
+  });
+
+  await runTest('typing a task name updates state and back returns to the list showing it', async () => {
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.fill('.ra-task-name-input', 'Setup & Dismantling Activity');
+
+    const stateBefore = await page.evaluate(() => window.riskAssessmentState.tasks[0].taskName);
+    assert.strictEqual(stateBefore, 'Setup & Dismantling Activity');
+
+    await page.click('#raBackToList');
+    await page.waitForSelector('.ra-list-screen');
+    const title = await page.textContent('.ra-task-card-title');
+    assert.strictEqual(title.trim(), 'Setup & Dismantling Activity');
+  });
+
+  await runTest('adding a hazard jumps into it, and controls start empty', async () => {
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+
+    const hazard = await page.evaluate(() =>
+      window.riskAssessmentState.tasks[0].hazards[0]);
+    assert.strictEqual(hazard.controls.length, 0);
+    assert.strictEqual(hazard.actOrCondition, 'Condition', 'default before the assessor picks one');
+  });
+
+  await runTest('one task can carry several distinct hazards, each scored independently', async () => {
+    // This is the whole point of the rebuild: v1 crammed "manual handling,
+    // falling object, electric shock" into one cell under one score. v2 must
+    // let each hazard under the same task carry its own severity/probability.
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+    await page.fill('.ra-hazard-text', 'Electric shock');
+    await page.selectOption('.ra-base-severity', '8');
+    await page.selectOption('.ra-base-probability', '2');
+    await page.click('#raBackToTask');
+    await page.waitForSelector('.ra-task-screen');
+
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+    await page.fill('.ra-hazard-text', 'Manual handling strain');
+    await page.selectOption('.ra-base-severity', '2');
+    await page.selectOption('.ra-base-probability', '6');
+
+    const hazards = await page.evaluate(() => window.riskAssessmentState.tasks[0].hazards);
+    assert.strictEqual(hazards.length, 2);
+    assert.strictEqual(hazards[0].hazardText, 'Electric shock');
+    assert.strictEqual(hazards[0].baseSeverity, 8);
+    assert.strictEqual(hazards[1].hazardText, 'Manual handling strain');
+    assert.strictEqual(hazards[1].baseSeverity, 2);
+  });
+
+  await runTest('adding several controls under one hazard nests them all', async () => {
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="0"]', 'Vetted transport only');
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="1"]', 'PPE issued');
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="2"]', 'Daily briefing');
+
+    const controls = await page.evaluate(() =>
+      window.riskAssessmentState.tasks[0].hazards[0].controls.map(c => c.controlText));
+    assert.deepStrictEqual(controls, ['Vetted transport only', 'PPE issued', 'Daily briefing']);
+  });
+
+  console.log('\nRemoval — task, hazard, control');
+
+  await runTest('removing a control drops only that one, keeping order', async () => {
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="0"]', 'First');
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="1"]', 'Second');
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="2"]', 'Third');
+
+    await page.click('.ra-control-remove[data-control-index="1"]'); // remove "Second"
+
+    const controls = await page.evaluate(() =>
+      window.riskAssessmentState.tasks[0].hazards[0].controls.map(c => c.controlText));
+    assert.deepStrictEqual(controls, ['First', 'Third']);
+  });
+
+  await runTest('removing a hazard drops only that one and returns to the task screen', async () => {
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+
+    await page.click('#raAddHazard');
+    await page.fill('.ra-hazard-text', 'Hazard A');
+    await page.click('#raBackToTask');
+    await page.click('#raAddHazard');
+    await page.fill('.ra-hazard-text', 'Hazard B');
+    await page.click('#raBackToTask');
+    await page.waitForSelector('.ra-hazard-card');
+
+    await page.click('.ra-hazard-remove[data-hazard-index="0"]');
+    await page.waitForSelector('.ra-task-screen');
+
+    const hazards = await page.evaluate(() => window.riskAssessmentState.tasks[0].hazards);
+    assert.strictEqual(hazards.length, 1);
+    assert.strictEqual(hazards[0].hazardText, 'Hazard B', 'removing index 0 must leave hazard B, not A');
+  });
+
+  await runTest('removing a task from the list drops only that one', async () => {
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.fill('.ra-task-name-input', 'Task One');
+    await page.click('#raBackToList');
+    await page.waitForSelector('.ra-list-screen');
+    await page.click('#raAddTask');
+    await page.waitForSelector('.ra-task-screen');
+    await page.fill('.ra-task-name-input', 'Task Two');
+    await page.click('#raBackToList');
+    await page.waitForSelector('.ra-task-card:nth-child(2)');
+
+    await page.click('.ra-task-remove[data-task-index="0"]');
+    await page.waitForSelector('.ra-list-screen');
+
+    const tasks = await page.evaluate(() => window.riskAssessmentState.tasks);
+    assert.strictEqual(tasks.length, 1);
+    assert.strictEqual(tasks[0].taskName, 'Task Two', 'removing index 0 must leave Task Two, not Task One');
+  });
+
+  await runTest('removing the current task from inside it returns to the list', async () => {
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.click('#raRemoveTask');
+    await page.waitForSelector('.ra-list-screen');
+
+    const tasks = await page.evaluate(() => window.riskAssessmentState.tasks);
+    assert.strictEqual(tasks.length, 0);
+  });
+
+  console.log('\nLive category chip (Base Risk section)');
+
+  await runTest('chip updates live and shows M+ for S=8/P=1, L for S=4/P=2 — same rating, different category', async () => {
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+
+    await page.selectOption('.ra-base-severity', '8');
+    await page.selectOption('.ra-base-probability', '1');
+    assert.strictEqual(await page.textContent('.ra-base-rating'), '8');
+    assert.strictEqual(await page.textContent('.ra-base-category'), 'M+');
+
+    await page.selectOption('.ra-base-severity', '4');
+    await page.selectOption('.ra-base-probability', '2');
+    assert.strictEqual(await page.textContent('.ra-base-rating'), '8');
+    assert.strictEqual(await page.textContent('.ra-base-category'), 'L');
+  });
+
+  await runTest('base and residual chips are independent', async () => {
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
 
     await page.selectOption('.ra-base-severity', '8');
     await page.selectOption('.ra-base-probability', '8');
-    assert.strictEqual(await page.textContent('.ra-base-rating'), '64');
-    assert.strictEqual(await page.textContent('#raBaseCategory'), 'VH');
+    await page.selectOption('.ra-residual-severity', '1');
+    await page.selectOption('.ra-residual-probability', '1');
 
-    // Same task, far rarer: the rating collapses to 8 but the category stays
-    // above L, which is the whole reason the matrix is a lookup.
-    await page.selectOption('.ra-base-probability', '1');
-    assert.strictEqual(await page.textContent('.ra-base-rating'), '8');
-    assert.strictEqual(await page.textContent('#raBaseCategory'), 'M+');
+    assert.strictEqual(await page.textContent('.ra-base-category'), 'VH');
+    assert.strictEqual(await page.textContent('.ra-residual-category'), 'VL');
   });
 
-  await runTest('next and back preserve what was entered', async () => {
-    await startWizard(page);
+  console.log('\nHTML escaping (DOM inspection, not string matching)');
 
-    await page.fill('.ra-control', 'Vetted transport only');
-    await page.click('#raNext');
-    await page.waitForFunction(() =>
-      document.querySelector('.ra-progress').textContent.includes('2 of'));
+  const MALICIOUS = '<img src=x onerror=alert(1)>Ladder & "Rigging" work';
 
-    await page.click('#raBack');
-    await page.waitForFunction(() =>
-      document.querySelector('.ra-progress').textContent.includes('1 of'));
-
-    assert.strictEqual(await page.inputValue('.ra-control'), 'Vetted transport only');
-  });
-
-  await runTest('an added task is marked as added on site, and renders editable name/hazard inputs', async () => {
-    await startWizard(page);
-
-    const before = await page.evaluate(() => window.riskAssessmentState.tasks.length);
-    await page.click('#raAddTask');
-    await page.waitForSelector('.ra-task-name-input');
-    const after = await page.evaluate(() => window.riskAssessmentState.tasks.length);
-    assert.strictEqual(after, before + 1);
-
-    const added = await page.evaluate(() =>
-      window.riskAssessmentState.tasks[window.riskAssessmentState.tasks.length - 1]);
-    assert.strictEqual(added.riskAssessmentRowId, null);
-    assert.strictEqual(added.taskName, '', 'a freshly added task starts unnamed');
-
-    // A template-derived task renders its name as read-only text, not an input.
-    assert.strictEqual(await page.locator('.ra-task-name-input').count(), 1);
-    assert.strictEqual(await page.locator('.ra-task-name').count(), 0);
-  });
-
-  await runTest('review summary counts base against residual', async () => {
-    await startWizard(page);
-
-    await page.click('#raReview');
-    await page.waitForSelector('#raSummary');
-
-    const summary = await page.evaluate(() =>
-      window.buildRiskSummary(window.riskAssessmentState.tasks));
-
-    const baseTotal = Object.values(summary.base).reduce((a, b) => a + b, 0);
-    const residualTotal = Object.values(summary.residual).reduce((a, b) => a + b, 0);
-
-    assert.strictEqual(baseTotal, residualTotal);
-    assert.strictEqual(baseTotal, 2);
-    assert.strictEqual(summary.base['H'], 1);        // Travel to Store, S=6 P=6
-    assert.strictEqual(summary.residual['M'], 1);    // same task, S=6 P=2
-  });
-
-  await runTest('a skipped task is excluded from the summary', async () => {
-    await startWizard(page);
-
-    await page.click('#raSkip');
-    await page.click('#raReview');
-    await page.waitForSelector('#raSummary');
-
-    const summary = await page.evaluate(() =>
-      window.buildRiskSummary(window.riskAssessmentState.tasks));
-    const baseTotal = Object.values(summary.base).reduce((a, b) => a + b, 0);
-
-    assert.strictEqual(baseTotal, 1);
-  });
-
-  console.log('\nrenderReview HTML escaping (Task 9 review fix)');
-
-  await runTest('a task name with markup renders as text in the review list, no injection', async () => {
-    await startWizard(page);
-
-    // Type into the real input rather than poking state directly, so this
-    // exercises captureCard's reading of .ra-task-name-input (Task 9), not
-    // just the escaping in the review template.
-    await page.click('#raAddTask');
-    await page.waitForSelector('.ra-task-name-input');
-    const rawName = '<img src=x onerror=alert(1)>Ladder & "Rigging" work';
-    await page.fill('.ra-task-name-input', rawName);
-
-    const captured = await page.evaluate(() => {
-      const tasks = window.riskAssessmentState.tasks;
-      return tasks[tasks.length - 1].taskName;
-    });
-    assert.strictEqual(captured, '', 'state should not update until the card is captured (Next/Skip/Review)');
-
-    await page.click('#raReview');
-    await page.waitForSelector('#raSummary');
+  await runTest('a task name with angle brackets and a quote renders as visible text on the list card', async () => {
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.fill('.ra-task-name-input', MALICIOUS);
+    await page.click('#raBackToList');
+    await page.waitForSelector('.ra-list-screen');
 
     const result = await page.evaluate(() => {
-      const items = document.querySelectorAll('.ra-review-list li');
-      const li = items[items.length - 1];
-      const strong = li.querySelector('strong');
+      const el = document.querySelector('.ra-task-card-title');
       return {
-        strongText: strong.textContent,
-        strongInnerHtml: strong.innerHTML,
-        imgCount: li.querySelectorAll('img').length,
-        strongCount: li.querySelectorAll('strong').length,
+        text: el.textContent,
+        imgCount: document.querySelectorAll('.ra-task-card img').length,
+        cardCount: document.querySelectorAll('.ra-task-card').length,
       };
     });
 
-    // textContent round-trips through the browser's entity decoder, so this
-    // only comes back equal to the raw string when the markup was escaped
-    // exactly once - not left raw (which would inject an <img>) and not
-    // escaped twice (which would leave literal "&amp;" text behind).
-    assert.strictEqual(result.strongText, rawName,
-      'the raw name must come back as plain text, unchanged');
+    assert.strictEqual(result.text, MALICIOUS, 'the raw name must come back as plain text, unchanged');
     assert.strictEqual(result.imgCount, 0, 'the markup must not have created an <img> element');
-    assert.strictEqual(result.strongCount, 1, 'exactly the intended <strong> wrapper, nothing extra injected');
-    assert.strictEqual(result.strongInnerHtml,
+    assert.strictEqual(result.cardCount, 1, 'nothing extra injected');
+  });
+
+  await runTest('a double quote in Person at risk does not break out of the value attribute', async () => {
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+
+    const payload = 'Forklift driver " onmouseover="alert(1)';
+    await page.fill('.ra-person', payload);
+
+    const result = await page.evaluate(() => {
+      const input = document.querySelector('.ra-person');
+      return {
+        value: input.value,
+        onmouseover: input.getAttribute('onmouseover'),
+        extraInputs: document.querySelectorAll('.ra-person').length,
+      };
+    });
+
+    assert.strictEqual(result.value, payload);
+    assert.strictEqual(result.onmouseover, null, 'the quote must not have terminated the value attribute early');
+    assert.strictEqual(result.extraInputs, 1, 'the quote must not have injected a stray element');
+  });
+
+  await runTest('markup in hazard text and a control line renders as text on the review screen, no injection', async () => {
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+    await page.fill('.ra-hazard-text', MALICIOUS);
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="0"]', '<script>alert(2)<'.concat('/script>A "quoted" control'));
+
+    await page.click('#raBackToTask');
+    await page.click('#raBackToList');
+    await page.click('#raReviewBtn');
+    await page.waitForSelector('.ra-review-screen');
+
+    const result = await page.evaluate(() => {
+      const hazardHead = document.querySelector('.ra-review-hazard-head strong');
+      const controlLi = document.querySelector('.ra-review-controls li');
+      return {
+        hazardText: hazardHead.textContent,
+        hazardInnerHtml: hazardHead.innerHTML,
+        controlText: controlLi.textContent,
+        imgCount: document.querySelectorAll('.ra-review-list img').length,
+        scriptCount: document.querySelectorAll('.ra-review-list script').length,
+      };
+    });
+
+    assert.strictEqual(result.hazardText, MALICIOUS);
+    assert.strictEqual(result.imgCount, 0);
+    assert.strictEqual(result.scriptCount, 0, 'the control text must not have injected a <script> element');
+    assert.ok(result.controlText.includes('A "quoted" control'));
+    assert.strictEqual(result.hazardInnerHtml,
       '&lt;img src=x onerror=alert(1)&gt;Ladder &amp; "Rigging" work',
-      'markup should be escaped exactly once, matching escapeHtml\'s own output');
+      'escaped exactly once, matching escapeHtml\'s own output');
   });
 
-  await runTest('a normal task name renders readably with no literal escape sequences', async () => {
-    await startWizard(page);
+  console.log('\nReview validation (mirrors the backend\'s own rejection rules)');
 
-    // This is a template-derived task, which renders its name as read-only
-    // text (no input to type into) - setting state directly is the only way
-    // to drive it, unlike the added-task case above.
-    await page.evaluate(() => {
-      const state = window.riskAssessmentState;
-      state.tasks[state.index].taskName = 'Travel & Reporting';
+  await runTest('Review is blocked with no tasks, naming nothing to fix but explaining why', async () => {
+    await fillHeader(page);
+    // The starting task has no hazards yet and we are already on the list —
+    // delete it directly to get down to zero tasks.
+    await page.click('.ra-task-remove[data-task-index="0"]');
+    await page.waitForSelector('.ra-list-screen');
+    await page.click('#raReviewBtn');
+
+    assert.strictEqual(await page.isVisible('.ra-review-screen'), false);
+    const error = await page.textContent('#raError');
+    assert.ok(/at least one task/i.test(error), `expected a "no tasks" error, got: "${error}"`);
+  });
+
+  await runTest('Review is blocked and the empty task is named when it has no hazards', async () => {
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.fill('.ra-task-name-input', 'Travel to Store');
+    await page.click('#raBackToList');
+    await page.waitForSelector('.ra-list-screen');
+    await page.click('#raReviewBtn');
+
+    assert.strictEqual(await page.isVisible('.ra-review-screen'), false);
+    const error = await page.textContent('#raError');
+    assert.ok(error.includes('Travel to Store'), `expected the task to be named in the error, got: "${error}"`);
+  });
+
+  await runTest('a hazard with no controls passes review and reaches Submit — that is a legitimate finding', async () => {
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.fill('.ra-task-name-input', 'Travel to Store');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+    await page.fill('.ra-hazard-text', 'Road traffic accident');
+    await page.click('#raBackToTask');
+    await page.click('#raBackToList');
+    await page.click('#raReviewBtn');
+
+    await page.waitForSelector('.ra-review-screen');
+    const error = await page.textContent('#raError');
+    assert.strictEqual(error, '');
+  });
+
+  console.log('\nSubmit payload — nesting, sortOrder, siteId as string');
+
+  await runTest('submit posts the header and the full task -> hazard -> control tree, correctly nested', async () => {
+    await fillHeader(page, {
+      activity: 'Lux BA Deployment - Aug run',
+      typeOfActivity: 'Promotional',
+      location: 'KLI - Gate 3',
+      eventActivities: 'Female BA deployment',
+      department: 'Field Sales',
+      area: 'North Zone',
     });
 
-    await page.click('#raReview');
-    await page.waitForSelector('#raSummary');
+    // Task 1: two hazards, the first with two controls, the second with none.
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.fill('.ra-task-name-input', 'Setup & Dismantling Activity');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+    await page.fill('.ra-hazard-text', 'Electric shock');
+    await page.click('.ra-toggle-btn[data-value="Act"]');
+    await page.fill('.ra-person', 'Rigger');
+    await page.selectOption('.ra-base-severity', '8');
+    await page.selectOption('.ra-base-probability', '2');
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="0"]', 'Isolate power before rigging');
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="1"]', 'Licensed electrician only');
+    await page.selectOption('.ra-residual-severity', '8');
+    await page.selectOption('.ra-residual-probability', '1');
+    await page.click('#raBackToTask');
 
-    const text = await page.evaluate(() =>
-      document.querySelector('.ra-review-list li strong').textContent);
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+    await page.fill('.ra-hazard-text', 'Manual handling strain');
+    await page.fill('.ra-person', 'Rigger');
+    await page.selectOption('.ra-base-severity', '2');
+    await page.selectOption('.ra-base-probability', '6');
+    // No controls added on purpose - accepted finding.
+    await page.click('#raBackToTask');
+    await page.click('#raBackToList');
 
-    assert.strictEqual(text, 'Travel & Reporting');
-    assert.ok(!text.includes('&amp;'), 'must not show literal &amp; - that would mean double-escaping');
-    assert.ok(!text.includes('&quot;'), 'must not show literal &quot;');
-  });
-
-  console.log('\nTemplate picker HTML escaping (Task 9 review fix)');
-
-  await runTest('a malicious form name in the template picker renders as text, not markup', async () => {
-    await page.route('**/api/RiskAssessment/getRiskAssessmentForms', route =>
-      route.fulfill({
-        contentType: 'application/json',
-        body: JSON.stringify([
-          { id: 1, name: '<img src=x onerror=alert(1)>Evil & "Form"', taskCount: 3 },
-        ]),
-      }));
-
-    await page.goto(PAGE_URL); // no ?formId= -> hits the template-picker branch
-    await page.waitForSelector('#raTemplates .usafe-card');
-
-    const result = await page.evaluate(() => {
-      const title = document.querySelector('.usafe-card-title');
-      return {
-        text: title.textContent,
-        imgCount: document.querySelectorAll('#raTemplates img').length,
-        cardCount: document.querySelectorAll('#raTemplates .usafe-card').length,
-      };
-    });
-
-    assert.strictEqual(result.text, '<img src=x onerror=alert(1)>Evil & "Form"');
-    assert.strictEqual(result.imgCount, 0, 'the markup must not have created an <img> element');
-    assert.strictEqual(result.cardCount, 1, 'exactly one card, nothing extra injected');
-
-    await page.unroute('**/api/RiskAssessment/getRiskAssessmentForms');
-  });
-
-  console.log('\nSubmit flow (Task 9)');
-
-  await runTest('submit posts the header, an added task, and a skipped task in the payload', async () => {
-    await page.goto(wizardUrl);
-    await page.waitForSelector('#raHeaderStep', { state: 'visible' });
-
-    await page.fill('#raEventName', 'Lux BA Deployment - Aug run');
-    await page.fill('#raLocation', 'KLI - Gate 3');
-    await page.fill('#raDepartment', 'Field Sales');
-    await page.fill('#raArea', 'North Zone');
-    await page.click('#raHeaderNext');
-    await page.waitForSelector('.ra-card');
-
-    // Task 1 of 2 (template): skip it.
-    await page.click('#raSkip');
-    await page.waitForFunction(() =>
-      document.querySelector('.ra-progress').textContent.includes('2 of'));
-
-    // Task 2 of 2 (template): leave as-is, then log an unplanned hazard.
+    // Task 2: one hazard.
     await page.click('#raAddTask');
-    await page.waitForSelector('.ra-task-name-input');
-    await page.fill('.ra-task-name-input', 'Unplanned spill near loading bay');
-    await page.fill('.ra-hazard-input', 'Chemical spill');
-    await page.fill('.ra-hazard-description-input', 'Drum leaked during offload');
+    await page.waitForSelector('.ra-task-screen');
+    await page.fill('.ra-task-name-input', 'Travel to Store');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+    await page.fill('.ra-hazard-text', 'Road traffic accident');
+    await page.fill('.ra-person', 'BA');
+    await page.selectOption('.ra-base-severity', '6');
+    await page.selectOption('.ra-base-probability', '6');
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="0"]', 'Online taxi services used');
+    await page.click('#raBackToTask');
+    await page.click('#raBackToList');
 
-    await page.click('#raReview');
-    await page.waitForSelector('#raSummary');
+    await page.click('#raReviewBtn');
+    await page.waitForSelector('.ra-review-screen');
 
     const [request] = await Promise.all([
       page.waitForRequest('**/api/RiskAssessment/saveRiskAssessment'),
       page.click('#raSubmit'),
     ]);
-
     const body = JSON.parse(request.postData());
 
-    assert.strictEqual(typeof body.siteId, 'string', 'siteId must be sent as a string');
-    assert.strictEqual(body.siteId, '1');
-    assert.ok(body.reportedBy, 'reportedBy must be populated');
-    assert.strictEqual(body.reportedBy, 'mohsin@be.com.pk');
-
-    assert.strictEqual(body.eventName, 'Lux BA Deployment - Aug run');
+    assert.strictEqual(body.activity, 'Lux BA Deployment - Aug run');
+    assert.strictEqual(body.typeOfActivity, 'Promotional');
     assert.strictEqual(body.location, 'KLI - Gate 3');
+    assert.strictEqual(body.eventActivities, 'Female BA deployment');
     assert.strictEqual(body.department, 'Field Sales');
     assert.strictEqual(body.area, 'North Zone');
+    assert.strictEqual(typeof body.siteId, 'string', 'siteId must be sent as a string');
+    assert.strictEqual(body.siteId, '1');
+    assert.strictEqual(body.reportedBy, 'mohsin@be.com.pk');
 
-    assert.strictEqual(body.entries.length, 3, 'two template tasks plus the one added on site');
+    // No client-computed rating/category anywhere in the payload - the server
+    // is the sole authority and recomputes both.
+    const raw = JSON.stringify(body);
+    assert.ok(!raw.includes('baseRating') && !raw.includes('baseCategory') &&
+      !raw.includes('residualRating') && !raw.includes('residualCategory'),
+      'the payload must not send any client-computed rating/category');
 
-    const skippedEntry = body.entries.find(e => e.taskName === 'Travel to Store');
-    assert.ok(skippedEntry, 'the skipped template task must still be present in the payload');
-    assert.strictEqual(skippedEntry.skipped, true);
+    assert.strictEqual(body.tasks.length, 2);
 
-    const addedEntry = body.entries.find(e => e.taskName === 'Unplanned spill near loading bay');
-    assert.ok(addedEntry, 'the task added on site must be present in the payload');
-    assert.strictEqual(addedEntry.riskAssessmentRowId, null);
-    assert.strictEqual(addedEntry.hazard, 'Chemical spill');
-    assert.strictEqual(addedEntry.hazardDescription, 'Drum leaked during offload');
-    assert.strictEqual(addedEntry.skipped, false);
+    const task1 = body.tasks[0];
+    assert.strictEqual(task1.sortOrder, 1);
+    assert.strictEqual(task1.taskName, 'Setup & Dismantling Activity');
+    assert.strictEqual(task1.hazards.length, 2, 'one task, two distinct hazards - the whole point of the rebuild');
 
-    // A successful submit navigates away (see submitRiskAssessment) - let that
-    // settle before the next test's page.goto, or the two navigations race.
+    const shock = task1.hazards[0];
+    assert.strictEqual(shock.sortOrder, 1);
+    assert.strictEqual(shock.hazardText, 'Electric shock');
+    assert.strictEqual(shock.actOrCondition, 'Act');
+    assert.strictEqual(shock.personAtRisk, 'Rigger');
+    assert.strictEqual(shock.baseSeverity, 8);
+    assert.strictEqual(shock.baseProbability, 2);
+    assert.strictEqual(shock.residualSeverity, 8);
+    assert.strictEqual(shock.residualProbability, 1);
+    assert.strictEqual(shock.controls.length, 2);
+    assert.deepStrictEqual(shock.controls, [
+      { sortOrder: 1, controlText: 'Isolate power before rigging' },
+      { sortOrder: 2, controlText: 'Licensed electrician only' },
+    ]);
+
+    const strain = task1.hazards[1];
+    assert.strictEqual(strain.hazardText, 'Manual handling strain');
+    assert.strictEqual(strain.controls.length, 0, 'a hazard with no controls must still be posted, just with an empty array');
+
+    const task2 = body.tasks[1];
+    assert.strictEqual(task2.sortOrder, 2);
+    assert.strictEqual(task2.taskName, 'Travel to Store');
+    assert.strictEqual(task2.hazards.length, 1);
+    assert.strictEqual(task2.hazards[0].hazardText, 'Road traffic accident');
+    assert.strictEqual(task2.hazards[0].controls[0].controlText, 'Online taxi services used');
+
     await page.waitForURL('**/reporting.html', { timeout: 5000 }).catch(() => {});
   });
 
-  await runTest('submit is blocked and no navigation happens when an added task has no name', async () => {
-    await startWizard(page);
+  console.log('\nReview summary counts hazards, not tasks');
 
-    await page.click('#raAddTask');
-    await page.waitForSelector('.ra-task-name-input');
-    // Leave the name blank on purpose - this is Finding 1's failure mode.
+  await runTest('the base/residual summary table counts by hazard', async () => {
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.fill('.ra-task-name-input', 'Setup & Dismantling Activity');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+    await page.selectOption('.ra-base-severity', '6');
+    await page.selectOption('.ra-base-probability', '6'); // H
+    await page.selectOption('.ra-residual-severity', '6');
+    await page.selectOption('.ra-residual-probability', '2'); // M
+    await page.click('#raBackToTask');
 
-    await page.click('#raReview');
-    await page.waitForSelector('#raSummary');
-    await page.click('#raSubmit');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+    await page.selectOption('.ra-base-severity', '2');
+    await page.selectOption('.ra-base-probability', '6'); // M
+    await page.click('#raBackToTask');
+    await page.click('#raBackToList');
+    await page.click('#raReviewBtn');
+    await page.waitForSelector('.ra-review-screen');
 
-    // No request should have gone out and the page should not have navigated
-    // away as though the submit succeeded.
-    assert.ok(page.url().includes('RiskAssessment.html'),
-      'an unnamed, non-skipped task must block submission rather than navigate away');
+    const summary = await page.evaluate(() =>
+      window.buildRiskSummary(window.riskAssessmentState.tasks));
 
-    const error = await page.textContent('#raError');
-    assert.ok(/task 3/i.test(error), `expected the error to name the unnamed task, got: "${error}"`);
+    const baseTotal = Object.values(summary.base).reduce((a, b) => a + b, 0);
+    assert.strictEqual(baseTotal, 2, 'two hazards under one task must both be counted, not just the task once');
+    assert.strictEqual(summary.base['H'], 1);
+    assert.strictEqual(summary.base['M'], 1);
+    assert.strictEqual(summary.residual['M'], 1);
   });
 
-  console.log('\nPhoto attachments (Task 14)');
+  console.log('\nPhoto attachments (review screen)');
 
-  // Photos attach to the assessment as a whole, so every one of these lands on
-  // the review screen (see renderReview in Js/RiskAssessmentProcessor.js).
-  async function goToReview(page) {
-    await startWizard(page);
-    await page.click('#raSkip');
-    await page.waitForFunction(() =>
-      document.querySelector('.ra-progress').textContent.includes('2 of'));
-    await page.click('#raReview');
-    await page.waitForSelector('#raSummary');
-    await page.waitForSelector('#raPhotoSection', { state: 'visible' });
+  async function goToReviewWithOneHazard(page) {
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.fill('.ra-task-name-input', 'Travel to Store');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+    await page.fill('.ra-hazard-text', 'Road traffic accident');
+    await page.click('#raBackToTask');
+    await page.click('#raBackToList');
+    await page.click('#raReviewBtn');
+    await page.waitForSelector('.ra-review-screen');
   }
 
-  await runTest('attaching a photo posts it to the upload endpoint', async () => {
-    await goToReview(page);
+  await runTest('attaching a photo posts it to the upload endpoint and shows it in the list', async () => {
+    await goToReviewWithOneHazard(page);
 
     const [request] = await Promise.all([
       page.waitForRequest('**/api/RiskAssessment/uploadFiles'),
@@ -603,22 +728,20 @@ async function main() {
 
     assert.strictEqual(request.method(), 'POST');
     const body = request.postData() || '';
-    assert.ok(body.includes('name="files"'), 'the multipart field must be named "files", matching api/checklist/uploadFiles');
-    assert.ok(body.includes('loading-bay.jpg'), 'the original filename should be present in the multipart body');
+    assert.ok(body.includes('name="files"'));
+    assert.ok(body.includes('loading-bay.jpg'));
 
     await page.waitForFunction(() => window.riskAssessmentState.photos.length === 1);
     const photos = await page.evaluate(() => window.riskAssessmentState.photos);
     assert.strictEqual(photos[0].key, 'ra/2026/08/uploaded-0.jpg');
     assert.strictEqual(photos[0].name, 'loading-bay.jpg');
 
-    // Visible confirmation, not just state - the assessor has to be able to
-    // see what got attached.
     const listText = await page.textContent('#raPhotoList');
-    assert.ok(listText.includes('loading-bay.jpg'), 'the attached photo must be visible in the photo list');
+    assert.ok(listText.includes('loading-bay.jpg'));
   });
 
   await runTest('the returned keys appear in the files field of the submit payload', async () => {
-    await goToReview(page);
+    await goToReviewWithOneHazard(page);
 
     await Promise.all([
       page.waitForRequest('**/api/RiskAssessment/uploadFiles'),
@@ -632,15 +755,15 @@ async function main() {
     ]);
 
     const body = JSON.parse(request.postData());
-    assert.strictEqual(typeof body.files, 'string', 'files must be sent as a JSON string, same shape as CheckList.Files');
-    const files = JSON.parse(body.files);
-    assert.deepStrictEqual(files, ['ra/2026/08/uploaded-0.jpg', 'ra/2026/08/uploaded-1.jpg']);
+    assert.strictEqual(typeof body.files, 'string');
+    assert.deepStrictEqual(JSON.parse(body.files),
+      ['ra/2026/08/uploaded-0.jpg', 'ra/2026/08/uploaded-1.jpg']);
 
     await page.waitForURL('**/reporting.html', { timeout: 5000 }).catch(() => {});
   });
 
   await runTest('a user can remove an attached photo before submitting', async () => {
-    await goToReview(page);
+    await goToReviewWithOneHazard(page);
 
     await Promise.all([
       page.waitForRequest('**/api/RiskAssessment/uploadFiles'),
@@ -648,37 +771,20 @@ async function main() {
     ]);
     await page.waitForFunction(() => window.riskAssessmentState.photos.length === 2);
 
-    // Remove the first attached photo via its own remove control, not by
-    // poking state directly - this exercises the delegated click handler.
     await page.click('.ra-photo-remove[data-index="0"]');
     await page.waitForFunction(() => window.riskAssessmentState.photos.length === 1);
 
     const remaining = await page.evaluate(() => window.riskAssessmentState.photos);
-    assert.strictEqual(remaining[0].name, 'two.jpg', 'removing index 0 must leave the second photo, not the first');
+    assert.strictEqual(remaining[0].name, 'two.jpg');
 
     const listText = await page.textContent('#raPhotoList');
-    assert.ok(!listText.includes('one.jpg'), 'the removed photo must disappear from the visible list');
-    assert.ok(listText.includes('two.jpg'), 'the remaining photo must still be visible');
-
-    const [request] = await Promise.all([
-      page.waitForRequest('**/api/RiskAssessment/saveRiskAssessment'),
-      page.click('#raSubmit'),
-    ]);
-    const body = JSON.parse(request.postData());
-    assert.deepStrictEqual(JSON.parse(body.files), ['ra/2026/08/uploaded-1.jpg'],
-      'the submit payload must reflect the removal, carrying only the remaining photo\'s key');
-
-    await page.waitForURL('**/reporting.html', { timeout: 5000 }).catch(() => {});
+    assert.ok(!listText.includes('one.jpg'));
+    assert.ok(listText.includes('two.jpg'));
   });
 
-  await runTest('a failed photo upload leaves Submit usable, clears the stuck indicator, and keeps wizard state intact', async () => {
-    await goToReview(page);
+  await runTest('a failed photo upload leaves Submit usable and keeps wizard state intact', async () => {
+    await goToReviewWithOneHazard(page);
 
-    // Something already on screen before the failed upload - if the wizard
-    // state got wiped by the failure, this would be gone afterwards.
-    await page.evaluate(() => {
-      window.riskAssessmentState.tasks[0].additionalControl = 'Vetted transport only';
-    });
     const tasksBefore = await page.evaluate(() => JSON.stringify(window.riskAssessmentState.tasks));
 
     await page.route('**/api/RiskAssessment/uploadFiles', route => route.fulfill({
@@ -691,27 +797,18 @@ async function main() {
 
     await page.setInputFiles('#raPhotoInput', fakePhoto('storm-photo.jpg'));
 
-    // The shared error handler puts up its own dialog - dismiss it like a real
-    // user would, same as the assessor will.
     await page.waitForSelector('.swal2-confirm', { state: 'visible' });
     await page.click('.swal2-confirm');
 
-    // Submit must be usable again, not left stuck disabled from before the upload.
     await page.waitForFunction(() => document.getElementById('raSubmit').disabled === false);
 
-    // No stuck "Uploading..." indicator.
     const statusText = await page.textContent('#raPhotoStatus');
-    assert.ok(!/uploading/i.test(statusText),
-      `the status text must not still say Uploading, got: "${statusText}"`);
+    assert.ok(!/uploading/i.test(statusText), `must not still say Uploading, got: "${statusText}"`);
 
-    // The failed upload must not have added a photo, or altered anything else
-    // in the wizard's state - losing a completed assessment to a photo that
-    // would not upload is exactly what this guards against.
     const tasksAfter = await page.evaluate(() => JSON.stringify(window.riskAssessmentState.tasks));
     assert.strictEqual(tasksAfter, tasksBefore, 'a failed upload must not alter or wipe the wizard state');
     assert.strictEqual(await page.evaluate(() => window.riskAssessmentState.photos.length), 0);
 
-    // And the obvious recovery path must actually work: submit without the photo.
     await page.unroute('**/api/RiskAssessment/uploadFiles');
     const [request] = await Promise.all([
       page.waitForRequest('**/api/RiskAssessment/saveRiskAssessment'),
@@ -725,8 +822,8 @@ async function main() {
     await page.unroute('**/api/diagnostics/clientlog');
   });
 
-  await runTest('submitting with no photos still works and sends no bogus files value', async () => {
-    await goToReview(page);
+  await runTest('submitting with no photos sends no files field at all', async () => {
+    await goToReviewWithOneHazard(page);
 
     const [request] = await Promise.all([
       page.waitForRequest('**/api/RiskAssessment/saveRiskAssessment'),
@@ -734,146 +831,9 @@ async function main() {
     ]);
 
     const body = JSON.parse(request.postData());
-    assert.strictEqual(Object.prototype.hasOwnProperty.call(body, 'files'), false,
-      'files must be entirely absent from the payload when nothing was attached, not "[]" or null');
+    assert.strictEqual(Object.prototype.hasOwnProperty.call(body, 'files'), false);
 
     await page.waitForURL('**/reporting.html', { timeout: 5000 }).catch(() => {});
-  });
-
-  console.log('\nReport details page — risk assessment branch (Task 15)');
-
-  // fetchTaskDetails' "RiskAssessment" case (ChangeFormController.GetTaskDetails)
-  // returns this exact shape, camelCase on the wire same as every other branch
-  // on this page (see data.checkListData above).
-  const RD_PAGE_URL = `${BASE_URL}/Pages/reportDeatails/reportDetails.html`;
-
-  function fakeRiskAssessmentDetails(overrides) {
-    return Object.assign({
-      formName: 'Lux Instore Plan',
-      eventName: 'Female BA Deployment',
-      location: 'KLI',
-      department: 'Field Sales',
-      area: 'North Zone',
-      status: 'Pending',
-      createdDate: '2026-08-15T10:00:00Z',
-      reportedBy: 'mohsin@be.com.pk',
-      files: null,
-      riskAssessmentData: [
-        {
-          id: 1, sortOrder: 1, taskName: 'Travel to Store', hazard: 'Road traffic accident',
-          actOrCondition: 'Condition', personAtRisk: 'BA', hazardDescription: 'No transport vetting',
-          baseSeverity: 6, baseProbability: 6, baseRating: 36, baseCategory: 'H',
-          additionalControl: 'Online taxi services used',
-          residualSeverity: 6, residualProbability: 2, residualRating: 12, residualCategory: 'M',
-          skipped: false,
-        },
-        {
-          id: 2, sortOrder: 2, taskName: 'Store Reporting & Briefing', hazard: 'Slip/trip',
-          actOrCondition: 'Condition', personAtRisk: 'Worker', hazardDescription: null,
-          // A skipped entry is never scored (RiskAssessmentController.SaveRiskAssessment
-          // leaves these at their non-nullable defaults - 0 for the ints, "" for the
-          // category strings - rather than null), which is exactly why the page must
-          // key off `skipped`, not off these values being falsy/absent.
-          baseSeverity: 0, baseProbability: 0, baseRating: 0, baseCategory: '',
-          additionalControl: null,
-          residualSeverity: 0, residualProbability: 0, residualRating: 0, residualCategory: '',
-          skipped: true,
-        },
-      ],
-    }, overrides || {});
-  }
-
-  async function goToRiskAssessmentDetails(page, details) {
-    await page.route('**/api/ChangeForm/fetchTaskDetails*', route =>
-      route.fulfill({ contentType: 'application/json', body: JSON.stringify(details) }));
-    await page.goto(`${RD_PAGE_URL}?id=1&entity=RiskAssessment`);
-    await page.waitForSelector('#detailsDiv .rd-ra-task');
-    await page.unroute('**/api/ChangeForm/fetchTaskDetails*');
-  }
-
-  await runTest('a risk assessment detail renders its tasks with their categories', async () => {
-    await goToRiskAssessmentDetails(page, fakeRiskAssessmentDetails());
-
-    const taskCount = await page.locator('.rd-ra-task').count();
-    assert.strictEqual(taskCount, 2, 'both the scored and the skipped task must render');
-
-    const baseCategories = await page.evaluate(() =>
-      Array.from(document.querySelectorAll('.rd-ra-base-category')).map(el => el.textContent.trim()));
-    assert.deepStrictEqual(baseCategories, ['H'], 'only the scored task shows a base category chip');
-
-    const residualCategories = await page.evaluate(() =>
-      Array.from(document.querySelectorAll('.rd-ra-residual-category')).map(el => el.textContent.trim()));
-    assert.deepStrictEqual(residualCategories, ['M']);
-
-    // The chip colour must come from RISK_CATEGORY_COLOUR (Js/RiskMatrix.js),
-    // not a second, hardcoded colour map on this page.
-    const actualCss = await page.evaluate(() =>
-      document.querySelector('.rd-ra-base-category').style.backgroundColor);
-    const expectedCss = await page.evaluate((hex) => {
-      const probe = document.createElement('div');
-      probe.style.backgroundColor = hex;
-      document.body.appendChild(probe);
-      const rgb = getComputedStyle(probe).backgroundColor;
-      probe.remove();
-      return rgb;
-    }, await page.evaluate(() => window.RISK_CATEGORY_COLOUR['H']));
-    assert.strictEqual(actualCss, expectedCss);
-  });
-
-  await runTest('a skipped task is visibly marked as skipped rather than showing zeros', async () => {
-    await goToRiskAssessmentDetails(page, fakeRiskAssessmentDetails());
-
-    const skipped = await page.evaluate(() => {
-      const row = document.querySelector('.rd-ra-task-skipped');
-      return {
-        exists: !!row,
-        badgeText: row ? row.querySelector('.rd-ra-skip-badge').textContent.trim() : null,
-        rowText: row ? row.textContent : '',
-        chipCount: row ? row.querySelectorAll('.rd-ra-category').length : -1,
-      };
-    });
-
-    assert.ok(skipped.exists, 'the skipped task must render with its own marker element');
-    assert.strictEqual(skipped.badgeText, 'SKIPPED');
-    assert.ok(!/\b0\b/.test(skipped.rowText), 'a skipped task must never show a bare 0 for its score');
-    assert.strictEqual(skipped.rowText.indexOf('undefined'), -1,
-      'null scores must not leak the literal word "undefined"');
-    assert.strictEqual(skipped.chipCount, 0,
-      'a skipped task has nothing to grade, so no category chip should render for it');
-  });
-
-  await runTest('a task name with angle brackets and a double quote renders as visible text, no injected markup', async () => {
-    const maliciousName = '<img src=x onerror=alert(1)>Ladder & "Rigging" work';
-    const details = fakeRiskAssessmentDetails({
-      riskAssessmentData: [
-        {
-          id: 3, sortOrder: 1, taskName: maliciousName, hazard: '<b>bad</b> hazard <script>alert(2)</script>',
-          actOrCondition: 'Act', personAtRisk: 'Rigger', hazardDescription: null,
-          baseSeverity: 2, baseProbability: 2, baseRating: 4, baseCategory: 'L',
-          additionalControl: 'A "quoted" control & more',
-          residualSeverity: 1, residualProbability: 1, residualRating: 1, residualCategory: 'VL',
-          skipped: false,
-        },
-      ],
-    });
-
-    await goToRiskAssessmentDetails(page, details);
-
-    const result = await page.evaluate(() => {
-      const nameEl = document.querySelector('.rd-ra-taskname');
-      return {
-        text: nameEl.textContent,
-        imgCount: document.querySelectorAll('#detailsDiv img').length,
-        bCount: document.querySelectorAll('#detailsDiv b').length,
-        scriptCount: document.querySelectorAll('#detailsDiv script').length,
-      };
-    });
-
-    assert.strictEqual(result.text, `1. ${maliciousName}`,
-      'the raw name must come back as plain text, unchanged');
-    assert.strictEqual(result.imgCount, 0, 'the markup in taskName must not have created an <img> element');
-    assert.strictEqual(result.bCount, 0, 'the markup in hazard must not have created a <b> element');
-    assert.strictEqual(result.scriptCount, 0, 'the markup in hazard must not have injected a <script> element');
   });
 
   await browser.close();

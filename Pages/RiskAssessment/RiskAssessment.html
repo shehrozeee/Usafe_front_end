@@ -17,42 +17,375 @@
 
     <!-- HttpHandler.js's shared error path (handleRequestError) calls swal.fire
          on every failed request - every other page in the app loads sweetalert2
-         for that reason, but this page never did, so a failed request here threw
-         a ReferenceError instead of showing the error dialog (see
-         Js/RiskAssessmentProcessor.js for the rest of the fix). -->
+         for that reason. A missing sweetalert2 turns any failed request into an
+         uncaught ReferenceError instead of an error dialog, so this must stay. -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.all.min.js" crossorigin="anonymous"></script>
     <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.min.css" rel="stylesheet">
 
+    <!-- getValue()/setValue() below come from here. A missing LocalStorage.js
+         silently kills every submit (getValue is undefined, siteId can never be
+         read) - this must stay loaded. -->
     <script src="../../Helpers/LocalStorage.js"></script>
     <script src="../../Global/URLS.js"></script>
     <script src="../../Helpers/HttpHandler.js"></script>
     <script src="../../Js/Authentication/CheckUser.js"></script>
 
-    <!-- Task 8: client risk matrix + task-card template. Task 9 wires up the
-         wizard body that consumes them. -->
+    <!-- Client risk matrix (unchanged, reused as-is) + the v2 builder templates
+         and the wizard logic that consumes them. -->
     <script src="../../Js/RiskMatrix.js"></script>
     <script src="../../Templates/RiskAssessmentCard.js"></script>
     <script src="../../Js/RiskAssessmentProcessor.js"></script>
+
+    <style>
+        #riskAssessmentRoot {
+            padding: 16px 16px 100px;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        .ra-screen-title {
+            font-size: 20px;
+            font-weight: 800;
+            margin: 4px 0 16px;
+            color: var(--usafe-text);
+        }
+
+        .ra-back {
+            background: none;
+            border: none;
+            padding: 8px 0;
+            margin-bottom: 4px;
+            font-weight: 700;
+            color: var(--usafe-charcoal);
+            font-size: 14px;
+        }
+
+        .ra-section-title {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: var(--usafe-text-mid);
+            margin: 20px 0 8px;
+        }
+
+        .ra-task-card,
+        .ra-hazard-card {
+            position: relative;
+            background: var(--usafe-white);
+            border-radius: var(--usafe-radius-sm);
+            box-shadow: var(--usafe-shadow);
+            margin-bottom: 12px;
+            border-left: 4px solid var(--usafe-yellow);
+        }
+
+        .ra-task-open,
+        .ra-hazard-open {
+            padding: 14px 40px 14px 16px;
+            cursor: pointer;
+        }
+
+        .ra-task-card-title,
+        .ra-hazard-card-text {
+            font-weight: 700;
+            font-size: 15px;
+            margin-bottom: 4px;
+            word-break: break-word;
+        }
+
+        .ra-task-card-meta,
+        .ra-hazard-card-meta {
+            font-size: 12px;
+            color: var(--usafe-text-mid);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .ra-task-remove,
+        .ra-hazard-remove {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background: none;
+            border: none;
+            font-size: 20px;
+            line-height: 1;
+            color: #c62828;
+            cursor: pointer;
+            padding: 6px 10px;
+            z-index: 2;
+        }
+
+        .ra-placeholder {
+            color: var(--usafe-text-light);
+            font-style: italic;
+            font-weight: 400;
+        }
+
+        .ra-empty-hint {
+            color: var(--usafe-text-light);
+            font-size: 13px;
+            padding: 12px 0;
+        }
+
+        .ra-chip {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 800;
+            color: #333;
+        }
+
+        .ra-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 700;
+            background: var(--usafe-border);
+            color: var(--usafe-text-mid);
+        }
+
+        .ra-toggle {
+            display: flex;
+            gap: 8px;
+        }
+
+        .ra-toggle-btn {
+            flex: 1;
+            padding: 10px;
+            border-radius: var(--usafe-radius-sm);
+            border: 1px solid var(--usafe-border);
+            background: var(--usafe-white);
+            font-weight: 700;
+        }
+
+        .ra-toggle-btn.active {
+            background: var(--usafe-charcoal);
+            color: var(--usafe-yellow);
+            border-color: var(--usafe-charcoal);
+        }
+
+        .ra-section {
+            background: #fafafa;
+            border-radius: var(--usafe-radius-sm);
+            padding: 14px;
+            margin: 12px 0;
+            border: 1px solid var(--usafe-border);
+        }
+
+        .ra-rating-line {
+            margin-top: 8px;
+            font-size: 14px;
+        }
+
+        .ra-control-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .ra-control-row .form-control {
+            flex: 1;
+        }
+
+        .ra-control-remove {
+            background: none;
+            border: none;
+            font-size: 20px;
+            line-height: 1;
+            color: #c62828;
+            cursor: pointer;
+            padding: 4px 8px;
+        }
+
+        .ra-controls-block {
+            margin: 16px 0;
+        }
+
+        .ra-optional {
+            font-weight: 400;
+            text-transform: none;
+            color: var(--usafe-text-light);
+        }
+
+        #raAddTask,
+        #raAddHazard,
+        #raAddControl {
+            width: 100%;
+            margin-bottom: 10px;
+            border-radius: var(--usafe-radius-sm);
+            font-weight: 700;
+        }
+
+        .ra-review-task {
+            list-style: none;
+            background: var(--usafe-white);
+            border-radius: var(--usafe-radius-sm);
+            box-shadow: var(--usafe-shadow);
+            padding: 14px;
+            margin-bottom: 14px;
+        }
+
+        .ra-review-task-name {
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+
+        .ra-review-hazards {
+            list-style: none;
+            padding-left: 0;
+            margin: 0;
+        }
+
+        .ra-review-hazard {
+            border-top: 1px solid var(--usafe-border);
+            padding: 10px 0;
+        }
+
+        .ra-review-hazard-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .ra-review-hazard-meta {
+            font-size: 12px;
+            color: var(--usafe-text-mid);
+            margin: 6px 0;
+        }
+
+        .ra-review-controls {
+            margin: 6px 0 0;
+            padding-left: 18px;
+            font-size: 13px;
+        }
+
+        .ra-review-no-controls {
+            font-size: 12px;
+            color: var(--usafe-text-light);
+            margin: 4px 0 0;
+        }
+
+        .ra-review-header {
+            background: var(--usafe-white);
+            border-radius: var(--usafe-radius-sm);
+            box-shadow: var(--usafe-shadow);
+            padding: 14px;
+            margin-bottom: 16px;
+        }
+
+        .ra-review-header-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 13px;
+            padding: 4px 0;
+            border-bottom: 1px solid var(--usafe-border);
+        }
+
+        .ra-review-header-row:last-child {
+            border-bottom: none;
+        }
+
+        .ra-review-header-label {
+            color: var(--usafe-text-mid);
+            font-weight: 600;
+        }
+
+        .ra-review-header-value {
+            text-align: right;
+            word-break: break-word;
+        }
+
+        .ra-summary-table {
+            font-size: 12px;
+            text-align: center;
+            background: var(--usafe-white);
+        }
+
+        .ra-photo-section {
+            margin: 20px 0;
+            padding: 16px;
+            background: #f9fafb;
+            border-radius: var(--usafe-radius-sm);
+            border: 1px dashed #d1d5db;
+        }
+
+        .ra-photo-section-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--usafe-text-mid);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+
+        .ra-photo-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .ra-photo-status {
+            font-size: 12px;
+            color: var(--usafe-text-mid);
+        }
+
+        .ra-photo-list {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0 0;
+        }
+
+        .ra-photo-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            font-size: 13px;
+        }
+
+        .ra-error {
+            padding: 8px 4px;
+            min-height: 20px;
+            font-size: 13px;
+        }
+    </style>
 </head>
 
 <body>
-    <div id="riskAssessmentRoot">
-        <div id="raTemplates"></div>
+    <div id="riskAssessmentRoot" class="usafe-page">
+        <div class="usafe-page-title">Risk Assessment</div>
 
-        <!-- Task 9: event header, shown once a template has loaded and before the
-             first task card. eventName/location are prefilled from the template
-             but stay editable - the point is to record what actually happened,
-             not just repeat the plan. department/area are captured here for the
-             first time; the template never carries them. -->
-        <div id="raHeaderStep" class="container" style="display:none;">
-            <h3>Event Details</h3>
+        <!-- Header page: Activity, Type of Activity, Location, Event Activities,
+             plus Department/Area (needed by the save payload, carried over from
+             v1's header step - there is no other source for them since v2 has no
+             template to inherit them from). Nothing is prefilled; the assessor
+             types all of it. -->
+        <div id="raHeaderStep" class="ra-screen ra-header-screen">
+            <div class="ra-section-title">Event Details</div>
             <div class="form-group">
-                <label for="raEventName">Event / Activity Name</label>
-                <input type="text" id="raEventName" class="form-control" placeholder="What is this assessment for?">
+                <label for="raActivity">Activity</label>
+                <input type="text" id="raActivity" class="form-control" placeholder="What is being assessed?">
+            </div>
+            <div class="form-group">
+                <label for="raTypeOfActivity">Type of Activity</label>
+                <input type="text" id="raTypeOfActivity" class="form-control">
             </div>
             <div class="form-group">
                 <label for="raLocation">Location</label>
                 <input type="text" id="raLocation" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="raEventActivities">Event Activities</label>
+                <textarea id="raEventActivities" class="form-control" rows="3"></textarea>
             </div>
             <div class="form-group">
                 <label for="raDepartment">Department</label>
@@ -62,42 +395,15 @@
                 <label for="raArea">Area</label>
                 <input type="text" id="raArea" class="form-control">
             </div>
-            <button id="raHeaderNext" class="btn btn-primary">Continue</button>
+            <button type="button" id="raHeaderNext" class="btn btn-primary btn-block">Continue</button>
         </div>
 
-        <div id="riskAssessmentCard" style="display:none;"></div>
-        <div id="raSummary" style="display:none;"></div>
+        <!-- Builder (list / task / hazard) and, later, the review screen -
+             everything after the header is a full-screen swap into this one
+             mount point, driven by render() in Js/RiskAssessmentProcessor.js. -->
+        <div id="raScreen" style="display:none;"></div>
 
-        <!-- Photos attach to the assessment as a whole, not to a single task, so
-             this lives on the review screen rather than on each task card - the
-             point the assessor has already stepped back to look at the whole
-             assessment before submitting. Shown/hidden together with #raSummary
-             from renderReview() in Js/RiskAssessmentProcessor.js. -->
-        <div id="raPhotoSection" class="container" style="display:none; margin:20px 0; padding:16px; background:#f9fafb; border-radius:12px; border:1px dashed #d1d5db;">
-            <div style="font-size:13px; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">
-                Attach Photos (Optional)
-            </div>
-            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                <button type="button" id="raPhotoAdd" class="btn btn-default" style="margin:0;">
-                    <i class="fa fa-camera"></i> Choose Photos
-                </button>
-                <input type="file" id="raPhotoInput" accept="image/*" multiple capture="environment" style="display:none;">
-                <span id="raPhotoStatus" style="font-size:12px; color:#6b7280;"></span>
-            </div>
-            <ul id="raPhotoList" class="ra-photo-list" style="list-style:none; padding:0; margin:10px 0 0;"></ul>
-        </div>
-
-        <div class="ra-nav" style="display:none;">
-            <button id="raBack" class="btn btn-default">Back</button>
-            <button id="raSkip" class="btn btn-default">Skip</button>
-            <button id="raNext" class="btn btn-primary">Next</button>
-        </div>
-        <div class="ra-actions" style="display:none;">
-            <button id="raAddTask" class="btn btn-default">+ Add task</button>
-            <button id="raReview" class="btn btn-default">Review</button>
-            <button id="raSubmit" class="btn btn-success" style="display:none;">Submit</button>
-        </div>
-        <div id="raError" class="text-danger"></div>
+        <div id="raError" class="ra-error text-danger"></div>
     </div>
 </body>
 
