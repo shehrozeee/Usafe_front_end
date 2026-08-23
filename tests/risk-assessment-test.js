@@ -836,6 +836,250 @@ async function main() {
     await page.waitForURL('**/reporting.html', { timeout: 5000 }).catch(() => {});
   });
 
+  console.log('\nReport detail view (reportDetails.html) — reading back a saved nested assessment');
+
+  // v2's fetchTaskDetails response for a Risk Assessment: riskAssessmentData
+  // is now an object (activity/typeOfActivity/location/eventActivities plus
+  // tasks[].hazards[].controls[]), not the v1 flat TaskName/Hazard/Rating
+  // list, and ratings/categories arrive pre-computed from the server — the
+  // page must render them, not recompute. See Pages/reportDeatails/
+  // reportDetails.html's riskAssessmentData branch.
+  const DETAILS_URL = `${BASE_URL}/Pages/reportDeatails/reportDetails.html?id=501&entity=RiskAssessment`;
+
+  function control(id, sortOrder, controlText) {
+    return { id, sortOrder, controlText };
+  }
+
+  function hazard(overrides) {
+    return Object.assign({
+      id: 1, sortOrder: 1, hazardText: 'Hazard', actOrCondition: 'Condition',
+      personAtRisk: 'BA',
+      baseSeverity: 6, baseProbability: 6, baseRating: 36, baseCategory: 'H',
+      residualSeverity: 6, residualProbability: 2, residualRating: 12, residualCategory: 'M',
+      controls: [],
+    }, overrides);
+  }
+
+  const NESTED_FIXTURE = {
+    formName: 'Risk Assessment',
+    location: 'Site HQ',
+    department: 'Field Sales',
+    area: 'North Zone',
+    status: 'Approved',
+    createdDate: '2026-08-20T09:30:00Z',
+    reportedBy: 'Mohsin Ali',
+    riskAssessmentData: {
+      activity: 'Lux Instore BA Deployment',
+      typeOfActivity: 'Promotional',
+      location: 'KLI - Gate 3',
+      eventActivities: 'BA deployment for Lux instore promotion',
+      tasks: [
+        {
+          id: 1, sortOrder: 1, taskName: 'Travel to Store',
+          hazards: [
+            hazard({
+              id: 1, sortOrder: 1, hazardText: 'Road traffic accident', actOrCondition: 'Condition',
+              personAtRisk: 'BA',
+              baseSeverity: 6, baseProbability: 6, baseRating: 36, baseCategory: 'H',
+              residualSeverity: 6, residualProbability: 2, residualRating: 12, residualCategory: 'M',
+              controls: [control(1, 1, 'Online taxi service')],
+            }),
+            hazard({
+              id: 2, sortOrder: 2, hazardText: 'Heat exhaustion', actOrCondition: 'Condition',
+              personAtRisk: 'BA',
+              baseSeverity: 4, baseProbability: 4, baseRating: 16, baseCategory: 'M',
+              residualSeverity: 4, residualProbability: 2, residualRating: 8, residualCategory: 'L',
+              controls: [], // no controls logged — must not break rendering
+            }),
+          ],
+        },
+        {
+          id: 2, sortOrder: 2, taskName: 'Instore Setup',
+          hazards: [
+            hazard({
+              id: 3, sortOrder: 1, hazardText: 'Manual handling injury', actOrCondition: 'Act',
+              personAtRisk: 'BA, Store staff',
+              baseSeverity: 4, baseProbability: 6, baseRating: 24, baseCategory: 'M+',
+              residualSeverity: 4, residualProbability: 2, residualRating: 8, residualCategory: 'L',
+              controls: [
+                control(2, 1, 'Two-person lift for boxes over 15kg'),
+                control(3, 2, 'Trolley provided'),
+              ],
+            }),
+          ],
+        },
+      ],
+    },
+  };
+
+  async function gotoDetails(page, payload) {
+    await page.route('**/api/ChangeForm/fetchTaskDetails**', route =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify(payload) }));
+    await page.goto(DETAILS_URL);
+    await setupAuth(page); // page must carry a session before the fetch fires
+    await page.goto(DETAILS_URL);
+    await page.waitForSelector('#detailsDiv .rd-ra-task, #detailsDiv .dropContent', { state: 'attached' });
+    await page.unroute('**/api/ChangeForm/fetchTaskDetails**');
+  }
+
+  await runTest('renders tasks, hazards and controls in order, correctly nested', async () => {
+    await gotoDetails(page, NESTED_FIXTURE);
+
+    const result = await page.evaluate(() => {
+      const taskEls = Array.from(document.querySelectorAll('#detailsDiv .rd-ra-task'));
+      return taskEls.map(taskEl => ({
+        taskName: taskEl.querySelector('.rd-ra-taskname').textContent.trim(),
+        hazards: Array.from(taskEl.querySelectorAll('.rd-ra-hazard')).map(hazardEl => ({
+          text: hazardEl.querySelector('.rd-ra-hazard-text').textContent.trim(),
+          controls: Array.from(hazardEl.querySelectorAll('.rd-ra-controls li')).map(li => li.textContent.trim()),
+        })),
+      }));
+    });
+
+    assert.strictEqual(result.length, 2, 'both tasks must render');
+    assert.strictEqual(result[0].taskName, 'Travel to Store');
+    assert.strictEqual(result[1].taskName, 'Instore Setup');
+
+    assert.strictEqual(result[0].hazards.length, 2, 'task 1 must nest exactly its own two hazards');
+    assert.strictEqual(result[0].hazards[0].text, 'Road traffic accident');
+    assert.deepStrictEqual(result[0].hazards[0].controls, ['Online taxi service']);
+    assert.strictEqual(result[0].hazards[1].text, 'Heat exhaustion');
+
+    assert.strictEqual(result[1].hazards.length, 1, 'task 2 must not pick up task 1\'s hazards');
+    assert.strictEqual(result[1].hazards[0].text, 'Manual handling injury');
+    assert.deepStrictEqual(result[1].hazards[0].controls,
+      ['Two-person lift for boxes over 15kg', 'Trolley provided'],
+      'controls must render in sortOrder');
+  });
+
+  await runTest('header shows activity, type of activity, location, event activities, status and who filed it', async () => {
+    await gotoDetails(page, NESTED_FIXTURE);
+
+    const bodyText = await page.textContent('#detailsDiv');
+    assert.ok(bodyText.includes('Lux Instore BA Deployment'), 'activity must appear');
+    assert.ok(bodyText.includes('Promotional'), 'type of activity must appear');
+    assert.ok(bodyText.includes('KLI - Gate 3'), 'the activity location must appear');
+    assert.ok(bodyText.includes('BA deployment for Lux instore promotion'), 'event activities must appear');
+    assert.ok(bodyText.includes('Approved'), 'status must appear');
+    assert.ok(bodyText.includes('Mohsin Ali'), 'reportedBy must appear');
+  });
+
+  await runTest('both base and residual categories appear for a hazard, with a visible drop indicator', async () => {
+    await gotoDetails(page, NESTED_FIXTURE);
+
+    const first = await page.evaluate(() => {
+      const hazardEl = document.querySelector('#detailsDiv .rd-ra-hazard');
+      return {
+        base: hazardEl.querySelector('.rd-ra-base-category').textContent.trim(),
+        residual: hazardEl.querySelector('.rd-ra-residual-category').textContent.trim(),
+        arrowClass: hazardEl.querySelector('.rd-ra-risk-arrow').className,
+      };
+    });
+
+    // Fixture's first hazard goes H (base) -> M (residual): a real improvement.
+    assert.strictEqual(first.base, 'H');
+    assert.strictEqual(first.residual, 'M');
+    assert.notStrictEqual(first.base, first.residual, 'base and residual categories must be independently visible');
+    assert.ok(first.arrowClass.includes('rd-ra-trend-down'),
+      'an improved residual category must be flagged distinctly from the base, not just printed as two equal chips');
+  });
+
+  await runTest('a hazard with no controls renders sensibly rather than breaking', async () => {
+    await gotoDetails(page, NESTED_FIXTURE);
+
+    const result = await page.evaluate(() => {
+      const taskEls = Array.from(document.querySelectorAll('#detailsDiv .rd-ra-task'));
+      const hazardEl = taskEls[0].querySelectorAll('.rd-ra-hazard')[1]; // "Heat exhaustion", zero controls
+      return {
+        hazardText: hazardEl.querySelector('.rd-ra-hazard-text').textContent.trim(),
+        hasControlsList: !!hazardEl.querySelector('.rd-ra-controls'),
+        noControlsText: hazardEl.querySelector('.rd-ra-no-controls') ? hazardEl.querySelector('.rd-ra-no-controls').textContent.trim() : null,
+        baseCategory: hazardEl.querySelector('.rd-ra-base-category').textContent.trim(),
+        residualCategory: hazardEl.querySelector('.rd-ra-residual-category').textContent.trim(),
+      };
+    });
+
+    assert.strictEqual(result.hazardText, 'Heat exhaustion');
+    assert.strictEqual(result.hasControlsList, false, 'no <ul> should render when there are no controls');
+    assert.ok(result.noControlsText, 'a "no controls" message must render instead');
+    assert.ok(/no controls/i.test(result.noControlsText));
+    // The rest of the hazard (its own scores) must still render fully.
+    assert.strictEqual(result.baseCategory, 'M');
+    assert.strictEqual(result.residualCategory, 'L');
+  });
+
+  await runTest('a task with zero hazards renders sensibly rather than breaking', async () => {
+    const fixture = JSON.parse(JSON.stringify(NESTED_FIXTURE));
+    fixture.riskAssessmentData.tasks.push({ id: 3, sortOrder: 3, taskName: 'Pack Down', hazards: [] });
+    await gotoDetails(page, fixture);
+
+    const result = await page.evaluate(() => {
+      const taskEls = Array.from(document.querySelectorAll('#detailsDiv .rd-ra-task'));
+      const lastTask = taskEls[taskEls.length - 1];
+      return {
+        taskName: lastTask.querySelector('.rd-ra-taskname').textContent.trim(),
+        hazardCount: lastTask.querySelectorAll('.rd-ra-hazard').length,
+        hasEmptyHint: !!lastTask.querySelector('.rd-ra-empty-hint'),
+      };
+    });
+
+    assert.strictEqual(result.taskName, 'Pack Down');
+    assert.strictEqual(result.hazardCount, 0);
+    assert.ok(result.hasEmptyHint, 'an empty task must say so rather than rendering nothing');
+  });
+
+  await runTest('free text with angle brackets and a double quote renders as visible text, never as markup', async () => {
+    const fixture = {
+      formName: 'Risk Assessment',
+      status: 'Pending',
+      createdDate: '2026-08-20T09:30:00Z',
+      reportedBy: MALICIOUS,
+      riskAssessmentData: {
+        activity: MALICIOUS,
+        typeOfActivity: MALICIOUS,
+        location: MALICIOUS,
+        eventActivities: MALICIOUS,
+        tasks: [{
+          id: 1, sortOrder: 1, taskName: MALICIOUS,
+          hazards: [
+            hazard({
+              id: 1, sortOrder: 1, hazardText: MALICIOUS, actOrCondition: 'Condition',
+              personAtRisk: MALICIOUS,
+              baseCategory: 'H', residualCategory: 'M',
+              controls: [control(1, 1, MALICIOUS)],
+            }),
+          ],
+        }],
+      },
+    };
+    await gotoDetails(page, fixture);
+
+    const result = await page.evaluate(() => {
+      const taskEl = document.querySelector('#detailsDiv .rd-ra-task');
+      const hazardEl = document.querySelector('#detailsDiv .rd-ra-hazard');
+      return {
+        taskName: taskEl.querySelector('.rd-ra-taskname').textContent,
+        hazardText: hazardEl.querySelector('.rd-ra-hazard-text').textContent,
+        controlText: hazardEl.querySelector('.rd-ra-controls li').textContent,
+        imgCount: document.querySelectorAll('#detailsDiv img').length,
+        scriptCount: document.querySelectorAll('#detailsDiv script').length,
+        taskCount: document.querySelectorAll('#detailsDiv .rd-ra-task').length,
+        hazardCount: document.querySelectorAll('#detailsDiv .rd-ra-hazard').length,
+      };
+    });
+
+    assert.strictEqual(result.taskName, MALICIOUS, 'raw task name must come back as plain text');
+    assert.strictEqual(result.hazardText, MALICIOUS, 'raw hazard text must come back as plain text');
+    assert.strictEqual(result.controlText, MALICIOUS, 'raw control text must come back as plain text');
+    assert.strictEqual(result.imgCount, 0, 'the onerror payload must not have created an <img> element');
+    assert.strictEqual(result.scriptCount, 0, 'nothing must have injected a <script> element');
+    assert.strictEqual(result.taskCount, 1, 'nothing extra injected');
+    assert.strictEqual(result.hazardCount, 1, 'nothing extra injected');
+
+    const bodyText = await page.textContent('#detailsDiv');
+    assert.ok(bodyText.includes(MALICIOUS), 'the header fields must also render the raw text, not stripped or broken');
+  });
+
   await browser.close();
 
   const failed = results.filter(r => !r.pass).length;

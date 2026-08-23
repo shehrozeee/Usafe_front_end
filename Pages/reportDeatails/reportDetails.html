@@ -300,12 +300,17 @@
         html = createSafetyActionsHtml(actions);
         html += `</div>`;
       }
-      // if risk assessment data is present then create html for it. Distinct shape
-      // from the three branches above (see ChangeFormController.GetTaskDetails,
-      // "RiskAssessment" case) - entries are TaskName/Hazard/Rating pairs, not
-      // question/responseValue pairs, so it needs its own rendering rather than
-      // being forced into the checklist branch.
+      // Risk assessment (v2, nested task -> hazard -> control tree). Distinct
+      // shape from the three branches above (see ChangeFormController.
+      // GetTaskDetails, "RiskAssessment" case): riskAssessmentData is an
+      // object - activity/typeOfActivity/location/eventActivities plus
+      // tasks[].hazards[].controls[], ordered by sortOrder at every level -
+      // not a flat array of TaskName/Hazard/Rating rows like v1, so it needs
+      // its own rendering rather than being forced into the checklist
+      // branch. Ratings/categories are computed and stored server-side -
+      // render them here, never recalculate.
       else if (data.riskAssessmentData) {
+        const ra = data.riskAssessmentData;
         const raStatusColors = {
           Pending: { bg: '#fff8e1', fg: '#b8860b' },
           Approved: { bg: '#dcfce7', fg: '#16a34a' },
@@ -313,18 +318,34 @@
         };
         const raStatus = raStatusColors[data.status] || raStatusColors.Pending;
 
-        // Header: event name, status, form/location/department/area, reported by + date.
-        html += `<div style="padding:12px 0 8px;"><strong style="font-size:16px;">${escapeHtml(data.eventName || data.formName || '')}</strong>
+        // Header: activity, status, form name, reported by + date.
+        html += `<div style="padding:12px 0 8px;"><strong style="font-size:16px;">${escapeHtml(ra.activity || data.formName || '')}</strong>
           <span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:${raStatus.bg};color:${raStatus.fg};margin-left:8px;">${escapeHtml(data.status || '')}</span>
           <div style="font-size:12px;color:#888;margin-top:4px;">${escapeHtml(data.formName || '')}</div>
           <div style="font-size:12px;color:#888;margin-top:2px;">By ${escapeHtml(data.reportedBy || '')} &middot; ${data.createdDate ? new Date(data.createdDate).toLocaleDateString() : ''}</div>
         </div><hr>`;
 
-        if (data.location) {
+        if (ra.typeOfActivity) {
+          html += `<div class='DropContainer'>
+      <p class='DropHeaders'>Type of Activity</p>
+      <div class='dropContent'>
+          <p>${escapeHtml(ra.typeOfActivity)}</p>
+      </div>
+  </div>`;
+        }
+        if (ra.location) {
           html += `<div class='DropContainer'>
       <p class='DropHeaders'>Location</p>
       <div class='dropContent'>
-          <p>${escapeHtml(data.location)}</p>
+          <p>${escapeHtml(ra.location)}</p>
+      </div>
+  </div>`;
+        }
+        if (ra.eventActivities) {
+          html += `<div class='DropContainer'>
+      <p class='DropHeaders'>Event Activities</p>
+      <div class='dropContent'>
+          <p>${escapeHtml(ra.eventActivities)}</p>
       </div>
   </div>`;
         }
@@ -361,46 +382,91 @@
         }
         html += `<hr>`;
 
-        let tasks = data.riskAssessmentData;
-        if (!tasks || !tasks.length) {
+        // Tasks -> hazards -> controls. Only one nesting seam gets its own
+        // wrapper element (.rd-ra-hazard-list, indented with a left rule
+        // under its task) - three full levels of boxed cards is too much
+        // chrome for a phone, so a hazard also repeats "Task N - Hazard M"
+        // right above its own content as a lightweight breadcrumb, in case
+        // the assessor has scrolled past the task header while reading a
+        // task with several hazards.
+        let tasks = (ra && ra.tasks) || [];
+        if (!tasks.length) {
           html += `<p class="dropContent">No tasks recorded.</p>`;
         } else {
-          tasks.forEach((t, i) => {
-            // A skipped task carries no scores (see RiskAssessmentController.
-            // SaveRiskAssessment) - it must read as deliberately skipped, never
-            // as scored zero or missing data, same rule the admin view (Views/
-            // RiskAssessment/Details.cshtml) follows with its em-dash/italic
-            // treatment.
-            if (t.skipped) {
-              html += `<div class="rd-ra-task rd-ra-task-skipped" style="padding:10px 0;border-bottom:1px solid #f5f5f5;background:#f7f7f7;">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-                  <span class="rd-ra-taskname" style="font-size:13px;flex:1;line-height:1.4;font-style:italic;color:#777777;">${i + 1}. ${escapeHtml(t.taskName)}</span>
-                  <span class="rd-ra-skip-badge" style="font-size:12px;font-weight:700;color:#b03a2e;background:#eeeeee;padding:2px 10px;border-radius:10px;margin-left:8px;white-space:nowrap;">SKIPPED</span>
-                </div>
-                ${t.hazard ? `<div style="font-size:12px;color:#888;margin-top:4px;font-style:italic;">Hazard: ${escapeHtml(t.hazard)}</div>` : ''}
-              </div>`;
-              return;
+          tasks.forEach((task, ti) => {
+            const hazards = task.hazards || [];
+
+            let hazardsHtml;
+            if (!hazards.length) {
+              hazardsHtml = `<p class="rd-ra-empty-hint" style="font-size:12px;color:#999999;font-style:italic;padding:6px 0 2px;">No hazards logged for this task.</p>`;
+            } else {
+              hazardsHtml = hazards.map((hazard, hi) => {
+                const baseColor = RISK_CATEGORY_COLOUR[hazard.baseCategory] || 'transparent';
+                const residualColor = RISK_CATEGORY_COLOUR[hazard.residualCategory] || 'transparent';
+
+                // The whole point of the assessment is the drop from base to
+                // residual risk. The two category chips are already computed
+                // and stored server-side (never recalculated here) - CATEGORY_ORDER,
+                // defined once in Templates/RiskAssessmentCard.js and reused
+                // here rather than duplicated, only ranks those two known
+                // strings so the connecting arrow can be coloured green
+                // (residual improved), red (residual worse) or grey (unchanged).
+                const baseRank = CATEGORY_ORDER.indexOf(hazard.baseCategory);
+                const residualRank = CATEGORY_ORDER.indexOf(hazard.residualCategory);
+                let trendClass = 'rd-ra-trend-flat';
+                let trendArrow = '&rarr;';
+                let trendColor = '#999999';
+                if (baseRank !== -1 && residualRank !== -1) {
+                  if (residualRank < baseRank) { trendClass = 'rd-ra-trend-down'; trendArrow = '&darr;'; trendColor = '#16a34a'; }
+                  else if (residualRank > baseRank) { trendClass = 'rd-ra-trend-up'; trendArrow = '&uarr;'; trendColor = '#dc2626'; }
+                }
+
+                const controls = hazard.controls || [];
+                const controlsHtml = controls.length
+                  ? `<ul class="rd-ra-controls" style="margin:4px 0 0;padding-left:18px;font-size:12px;color:#1a1a1a;">${controls.map(c => `<li>${escapeHtml(c.controlText)}</li>`).join('')}</ul>`
+                  : `<p class="rd-ra-no-controls" style="font-size:12px;color:#999999;font-style:italic;margin:4px 0 0;">No controls recorded.</p>`;
+
+                return `<div class="rd-ra-hazard" style="background:#fafafa;border-radius:10px;padding:10px 12px;margin-top:${hi === 0 ? '10px' : '8px'};">
+                  <div class="rd-ra-hazard-context" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#999999;margin-bottom:4px;">Task ${ti + 1} &middot; Hazard ${hi + 1}</div>
+                  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+                    <span class="rd-ra-hazard-text" style="font-size:13px;font-weight:700;flex:1;line-height:1.4;">${escapeHtml(hazard.hazardText)}</span>
+                    <span style="font-size:11px;font-weight:700;background:#e8e8e8;color:#666666;padding:2px 8px;border-radius:10px;white-space:nowrap;">${escapeHtml(hazard.actOrCondition)}</span>
+                  </div>
+                  <div style="font-size:12px;color:#666666;margin-top:6px;">Person at risk: ${escapeHtml(hazard.personAtRisk) || '-'}</div>
+
+                  <div style="margin-top:8px;">
+                    <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:#999999;margin:0 0 2px;">Controls</p>
+                    ${controlsHtml}
+                  </div>
+
+                  <div class="rd-ra-risk-transition" style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;padding-top:10px;border-top:1px dashed #e8e8e8;">
+                    <div style="flex:1;text-align:center;">
+                      <span style="display:block;font-size:10px;font-weight:700;text-transform:uppercase;color:#999999;">Base</span>
+                      <span class="rd-ra-category rd-ra-base-category" style="display:inline-block;margin-top:3px;padding:3px 12px;border-radius:12px;font-size:13px;font-weight:800;color:#333333;background:${baseColor};">${escapeHtml(hazard.baseCategory)}</span>
+                      <span style="display:block;font-size:10px;color:#888888;margin-top:3px;">S${escapeHtml(hazard.baseSeverity)}&times;P${escapeHtml(hazard.baseProbability)}=${escapeHtml(hazard.baseRating)}</span>
+                    </div>
+                    <span class="rd-ra-risk-arrow ${trendClass}" style="font-size:20px;font-weight:800;flex:0 0 auto;color:${trendColor};">${trendArrow}</span>
+                    <div style="flex:1;text-align:center;">
+                      <span style="display:block;font-size:10px;font-weight:700;text-transform:uppercase;color:#999999;">Residual</span>
+                      <span class="rd-ra-category rd-ra-residual-category" style="display:inline-block;margin-top:3px;padding:3px 12px;border-radius:12px;font-size:13px;font-weight:800;color:#333333;background:${residualColor};">${escapeHtml(hazard.residualCategory)}</span>
+                      <span style="display:block;font-size:10px;color:#888888;margin-top:3px;">S${escapeHtml(hazard.residualSeverity)}&times;P${escapeHtml(hazard.residualProbability)}=${escapeHtml(hazard.residualRating)}</span>
+                    </div>
+                  </div>
+                </div>`;
+              }).join('');
             }
 
-            const baseColor = RISK_CATEGORY_COLOUR[t.baseCategory] || 'transparent';
-            const residualColor = RISK_CATEGORY_COLOUR[t.residualCategory] || 'transparent';
-
-            html += `<div class="rd-ra-task" style="padding:10px 0;border-bottom:1px solid #f5f5f5;">
-              <div class="rd-ra-taskname" style="font-size:13px;font-weight:700;">${i + 1}. ${escapeHtml(t.taskName)}</div>
-              ${t.hazard ? `<div style="font-size:12px;color:#888;margin-top:2px;">Hazard: ${escapeHtml(t.hazard)}</div>` : ''}
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
-                <span style="font-size:12px;color:#888;">Base: S${escapeHtml(t.baseSeverity)} &times; P${escapeHtml(t.baseProbability)} = ${escapeHtml(t.baseRating)}</span>
-                <span class="rd-ra-category rd-ra-base-category" style="font-size:12px;font-weight:700;padding:2px 10px;border-radius:10px;background:${baseColor};">${escapeHtml(t.baseCategory)}</span>
+            html += `<div class="rd-ra-task" style="background:#ffffff;border-radius:12px;padding:12px 14px;margin-bottom:14px;border-left:4px solid #f5b700;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+              <div style="display:flex;align-items:baseline;gap:8px;">
+                <span style="font-size:11px;font-weight:800;text-transform:uppercase;color:#999999;white-space:nowrap;">Task ${ti + 1}</span>
+                <span class="rd-ra-taskname" style="font-size:14px;font-weight:700;line-height:1.4;">${escapeHtml(task.taskName)}</span>
               </div>
-              ${t.additionalControl ? `<div style="font-size:12px;color:#666;margin-top:6px;"><strong>Additional control:</strong> ${escapeHtml(t.additionalControl)}</div>` : ''}
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
-                <span style="font-size:12px;color:#888;">Residual: S${escapeHtml(t.residualSeverity)} &times; P${escapeHtml(t.residualProbability)} = ${escapeHtml(t.residualRating)}</span>
-                <span class="rd-ra-category rd-ra-residual-category" style="font-size:12px;font-weight:700;padding:2px 10px;border-radius:10px;background:${residualColor};">${escapeHtml(t.residualCategory)}</span>
-              </div>
+              <div class="rd-ra-hazard-list" style="margin-left:8px;padding-left:10px;border-left:2px solid #e8e8e8;">${hazardsHtml}</div>
             </div>`;
           });
         }
       }
+
 
       $("#detailsDiv").html(html);
     });
