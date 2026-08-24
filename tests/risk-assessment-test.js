@@ -422,6 +422,10 @@ async function main() {
     await page.fill('.ra-hazard-text', 'Forklift collision');
     await page.selectOption('.ra-base-severity', '6');
     await page.selectOption('.ra-base-probability', '6');
+    // A hazard needs at least one non-blank control before Confirm will move
+    // on - not what this test is about, but required to even get past it.
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="0"]', 'Keep pedestrians clear of forklift lanes');
 
     await page.click('#raConfirmHazard');
     await page.waitForSelector('.ra-task-screen');
@@ -448,6 +452,8 @@ async function main() {
     await page.click('#raAddHazard');
     await page.waitForSelector('.ra-hazard-screen');
     await page.fill('.ra-hazard-text', 'Falling boxes');
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="0"]', 'Boxes stacked to rated height only');
     await page.click('#raConfirmHazard');
     await page.waitForSelector('.ra-task-screen');
 
@@ -524,6 +530,72 @@ async function main() {
 
     const hazards = await page.evaluate(() => window.riskAssessmentState.tasks[0].hazards);
     assert.strictEqual(hazards.length, 0, 'Remove this hazard must still remove it');
+  });
+
+  console.log('\nControls are now mandatory — a hazard needs at least one before Confirm will move on');
+
+  await runTest('Confirm Hazard is blocked with no controls, and explains why in place rather than dead-ending', async () => {
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+    await page.fill('.ra-hazard-text', 'Chemical spill');
+
+    await page.click('#raConfirmHazard');
+
+    // Must not have silently succeeded and moved on - this is exactly the
+    // "dead or silent button" trap the wizard already had once (see the
+    // Confirm/Remove sticky footer history above).
+    assert.strictEqual(await page.isVisible('.ra-hazard-screen'), true,
+      'Confirm must not navigate away while the hazard has no control');
+    assert.strictEqual(await page.isVisible('.ra-task-screen'), false);
+
+    const inlineMessage = await page.textContent('.ra-controls-error-msg');
+    assert.ok(/control/i.test(inlineMessage), `expected an inline reason next to the controls list, got: "${inlineMessage}"`);
+    const pageError = await page.textContent('#raError');
+    assert.ok(/control/i.test(pageError), `expected the page-level error too, got: "${pageError}"`);
+
+    const hazard = await page.evaluate(() => window.riskAssessmentState.tasks[0].hazards[0]);
+    assert.strictEqual(hazard.hazardText, 'Chemical spill', 'nothing entered must be lost while blocked');
+  });
+
+  await runTest('a whitespace-only control is treated as no control at all', async () => {
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+    await page.fill('.ra-hazard-text', 'Chemical spill');
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="0"]', '   ');
+
+    await page.click('#raConfirmHazard');
+
+    assert.strictEqual(await page.isVisible('.ra-hazard-screen'), true,
+      'a whitespace-only control must satisfy none of the requirement\'s purpose, so it must still block');
+    const pageError = await page.textContent('#raError');
+    assert.ok(/control/i.test(pageError));
+  });
+
+  await runTest('typing real text into that control unblocks Confirm Hazard', async () => {
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+    await page.fill('.ra-hazard-text', 'Chemical spill');
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="0"]', '   ');
+    await page.click('#raConfirmHazard');
+    assert.strictEqual(await page.isVisible('.ra-hazard-screen'), true, 'sanity check: still blocked with blank text');
+
+    await page.fill('.ra-control-text[data-control-index="0"]', 'Spill kit on site');
+    await page.click('#raConfirmHazard');
+
+    await page.waitForSelector('.ra-task-screen');
+    const hazard = await page.evaluate(() => window.riskAssessmentState.tasks[0].hazards[0]);
+    assert.strictEqual(hazard.controls[0].controlText, 'Spill kit on site', 'the real control must have been kept');
   });
 
   console.log('\nLive category chip (Base Risk section)');
@@ -673,7 +745,13 @@ async function main() {
     assert.ok(error.includes('Travel to Store'), `expected the task to be named in the error, got: "${error}"`);
   });
 
-  await runTest('a hazard with no controls passes review and reaches Submit — that is a legitimate finding', async () => {
+  // INVERTED (was: "a hazard with no controls passes review and reaches
+  // Submit — that is a legitimate finding"). The product decision reversed:
+  // a hazard with no control is no longer an accepted finding, it is a
+  // blocked submission. This test used to prove the old, now-wrong rule; it
+  // is deliberately flipped to prove the new one, not deleted, so the suite
+  // still exercises this exact path.
+  await runTest('a hazard with no controls blocks Review, naming the hazard and its task', async () => {
     await fillHeader(page);
     await page.click('.ra-task-open');
     await page.waitForSelector('.ra-task-screen');
@@ -681,13 +759,64 @@ async function main() {
     await page.click('#raAddHazard');
     await page.waitForSelector('.ra-hazard-screen');
     await page.fill('.ra-hazard-text', 'Road traffic accident');
-    await page.click('#raBackToTask');
+    await page.click('#raBackToTask'); // plain nav, not Confirm - bypasses the hazard-screen gate on purpose
     await page.click('#raBackToList');
     await page.click('#raReviewBtn');
 
-    await page.waitForSelector('.ra-review-screen');
+    assert.strictEqual(await page.isVisible('.ra-review-screen'), false,
+      'a hazard with no control must no longer be allowed to reach review');
     const error = await page.textContent('#raError');
-    assert.strictEqual(error, '');
+    assert.ok(/no control/i.test(error), `expected a no-control message, got: "${error}"`);
+    assert.ok(error.includes('Road traffic accident'), `expected the hazard to be named, got: "${error}"`);
+    assert.ok(error.includes('Travel to Store'), `expected the task to be named too, got: "${error}"`);
+  });
+
+  await runTest('Submit refuses a hazard with no control even when it reaches Review directly, and jumps to it', async () => {
+    // The Review gate above stops a normal walk through the wizard from ever
+    // getting here with an invalid hazard - but a hazard can still reach the
+    // review screen without going through tryGoToReview at all (a draft
+    // restored straight onto 'review', see restoreRaDraft). Simulate exactly
+    // that by writing the invalid hazard into state directly and forcing the
+    // review screen, instead of going through the draft/localStorage plumbing
+    // (that path is covered separately below) - this test is about Submit's
+    // own guard, the last checkpoint before the network call.
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.fill('.ra-task-name-input', 'Setup Activity');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+    await page.fill('.ra-hazard-text', 'Electric shock');
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="0"]', 'Isolate power before rigging');
+    await page.click('#raBackToTask');
+    await page.click('#raBackToList');
+
+    await page.evaluate(() => {
+      window.riskAssessmentState.tasks[0].hazards.push({
+        hazardText: 'Falling tools', actOrCondition: 'Condition', personAtRisk: '',
+        baseSeverity: 2, baseProbability: 2, controls: [],
+        residualSeverity: 2, residualProbability: 2,
+      });
+      window.riskAssessmentState.nav = { screen: 'review', taskIndex: null, hazardIndex: null };
+      window.render();
+    });
+    await page.waitForSelector('.ra-review-screen');
+
+    await page.click('#raSubmit');
+
+    // Must land on the exact offending hazard, not just refuse silently.
+    await page.waitForSelector('.ra-hazard-screen');
+    const nav = await page.evaluate(() => window.riskAssessmentState.nav);
+    assert.strictEqual(nav.taskIndex, 0);
+    assert.strictEqual(nav.hazardIndex, 1, 'must jump to the second hazard - the one missing a control');
+
+    const error = await page.textContent('#raError');
+    assert.ok(error.includes('Falling tools'), `expected the offending hazard to be named, got: "${error}"`);
+    assert.ok(/no control/i.test(error));
+
+    const hasInlineBanner = await page.evaluate(() => !!document.querySelector('.ra-controls-error-msg'));
+    assert.ok(hasInlineBanner, 'the controls block itself must show an inline reason too, not just the page-level error');
   });
 
   console.log('\nSubmit payload — nesting, sortOrder, siteId as string');
@@ -727,7 +856,11 @@ async function main() {
     await page.fill('.ra-person', 'Rigger');
     await page.selectOption('.ra-base-severity', '2');
     await page.selectOption('.ra-base-probability', '6');
-    // No controls added on purpose - accepted finding.
+    // A hazard with no controls is no longer a valid finding - Submit refuses
+    // it - so this fixture (about payload nesting/shape, not the control
+    // rule) needs one too, same as every hazard below.
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="0"]', 'Team lift for anything over 15kg');
     await page.click('#raBackToTask');
     await page.click('#raBackToList');
 
@@ -796,7 +929,8 @@ async function main() {
 
     const strain = task1.hazards[1];
     assert.strictEqual(strain.hazardText, 'Manual handling strain');
-    assert.strictEqual(strain.controls.length, 0, 'a hazard with no controls must still be posted, just with an empty array');
+    assert.strictEqual(strain.controls.length, 1, 'this hazard\'s own control must still be posted, nested under it');
+    assert.strictEqual(strain.controls[0].controlText, 'Team lift for anything over 15kg');
 
     const task2 = body.tasks[1];
     assert.strictEqual(task2.sortOrder, 2);
@@ -821,12 +955,16 @@ async function main() {
     await page.selectOption('.ra-base-probability', '6'); // H
     await page.selectOption('.ra-residual-severity', '6');
     await page.selectOption('.ra-residual-probability', '2'); // M
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="0"]', 'Rigging inspected daily');
     await page.click('#raBackToTask');
 
     await page.click('#raAddHazard');
     await page.waitForSelector('.ra-hazard-screen');
     await page.selectOption('.ra-base-severity', '2');
     await page.selectOption('.ra-base-probability', '6'); // M
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="0"]', 'PPE issued');
     await page.click('#raBackToTask');
     await page.click('#raBackToList');
     await page.click('#raReviewBtn');
@@ -852,6 +990,10 @@ async function main() {
     await page.click('#raAddHazard');
     await page.waitForSelector('.ra-hazard-screen');
     await page.fill('.ra-hazard-text', 'Road traffic accident');
+    // Review (and therefore Submit) now refuses a hazard with no control, so
+    // every one of these photo-focused tests needs one just to get there.
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="0"]', 'Online taxi services used');
     await page.click('#raBackToTask');
     await page.click('#raBackToList');
     await page.click('#raReviewBtn');
@@ -1074,6 +1216,79 @@ async function main() {
     assert.deepStrictEqual(controlVals, ['Rated rigging only', 'Daily inspection']);
   });
 
+  await runTest('a pre-rule draft with a control-less hazard restores without crashing, and can be fixed and submitted', async () => {
+    // Written straight to localStorage (rather than built by driving the
+    // wizard) because this shape - a hazard with an empty controls array,
+    // sitting on the review screen - could only ever have been saved before
+    // this rule existed. The wizard itself can no longer produce it, but a
+    // draft saved weeks ago on an old build still can, and resuming it must
+    // neither crash nor silently let it through.
+    await page.goto(PAGE_URL);
+    await page.evaluate((key) => localStorage.removeItem(key), RA_DRAFT_KEY);
+    await page.evaluate((key) => {
+      const draft = {
+        header: { activity: 'Legacy Draft', typeOfActivity: '', location: '', eventActivities: '', department: '', area: '' },
+        headerDone: true,
+        tasks: [{
+          taskName: 'Old Task',
+          hazards: [{
+            hazardText: 'Unmitigated slip hazard', actOrCondition: 'Condition', personAtRisk: '',
+            baseSeverity: 2, baseProbability: 2, controls: [],
+            residualSeverity: 2, residualProbability: 2,
+          }],
+        }],
+        nav: { screen: 'review', taskIndex: null, hazardIndex: null },
+        timestamp: Date.now(),
+      };
+      localStorage.setItem(key, JSON.stringify(draft));
+    }, RA_DRAFT_KEY);
+
+    const pageErrors = [];
+    const onPageError = (err) => pageErrors.push(err.message);
+    page.on('pageerror', onPageError);
+
+    await page.reload();
+    await page.waitForSelector('.swal2-confirm', { state: 'visible' });
+    await page.click('.swal2-confirm'); // Resume
+    await page.waitForSelector('.ra-review-screen');
+
+    assert.deepStrictEqual(pageErrors, [],
+      `restoring a pre-rule draft must never throw, got: ${pageErrors.join('; ')}`);
+    page.off('pageerror', onPageError);
+
+    const reviewText = await page.textContent('.ra-review-list');
+    assert.ok(reviewText.includes('Unmitigated slip hazard'), 'the restore itself must still show the legacy hazard');
+    assert.ok(/no controls recorded/i.test(reviewText));
+
+    // Submit must still refuse it, not silently accept legacy data just
+    // because it predates the rule - and it must point the assessor at
+    // exactly what to fix rather than leave them stuck on the review screen.
+    await page.click('#raSubmit');
+    await page.waitForSelector('.ra-hazard-screen');
+    const error = await page.textContent('#raError');
+    assert.ok(error.includes('Unmitigated slip hazard'), `expected the legacy hazard to be named, got: "${error}"`);
+
+    // And the assessor can actually fix it from here and submit for real.
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="0"]', 'Wet floor signage placed');
+    await page.click('#raConfirmHazard');
+    await page.waitForSelector('.ra-task-screen');
+    await page.click('#raConfirmTask');
+    await page.waitForSelector('.ra-list-screen');
+    await page.click('#raReviewBtn');
+    await page.waitForSelector('.ra-review-screen');
+
+    const [request] = await Promise.all([
+      page.waitForRequest('**/api/RiskAssessment/saveRiskAssessment'),
+      page.click('#raSubmit'),
+    ]);
+    const body = JSON.parse(request.postData());
+    assert.strictEqual(body.tasks[0].hazards[0].controls[0].controlText, 'Wet floor signage placed',
+      'the fix made after resuming must be exactly what gets submitted');
+
+    await page.waitForURL('**/reporting.html', { timeout: 5000 }).catch(() => {});
+  });
+
   await runTest('declining the prompt starts clean and does not leave the old draft to reappear later', async () => {
     await page.goto(PAGE_URL);
     await page.evaluate((key) => localStorage.removeItem(key), RA_DRAFT_KEY);
@@ -1152,6 +1367,8 @@ async function main() {
     await page.click('#raAddHazard');
     await page.waitForSelector('.ra-hazard-screen');
     await page.fill('.ra-hazard-text', 'Forklift near pedestrians');
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="0"]', 'Marshalled pedestrian routes');
 
     // Let the debounce timer fire and attempt (and fail) to save.
     await page.waitForTimeout(2200);

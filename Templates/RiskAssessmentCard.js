@@ -278,7 +278,7 @@ function createHazardScreen(task, hazard, taskIndex, hazardIndex, scale) {
   const taskLabel = task.taskName ? escapeHtml(task.taskName) : `Task ${taskIndex + 1}`;
   const controlsBody = hazard.controls.length
     ? hazard.controls.map(createControlRow).join('')
-    : `<div class="ra-empty-hint"><i class="fas fa-shield-alt"></i>No controls added yet - that is fine, an unmitigated hazard is still a valid finding.</div>`;
+    : `<div class="ra-empty-hint"><i class="fas fa-shield-alt"></i>No controls added yet - add at least one before this hazard can be confirmed.</div>`;
 
   return `
     <div class="ra-screen ra-hazard-screen">
@@ -315,7 +315,7 @@ function createHazardScreen(task, hazard, taskIndex, hazardIndex, scale) {
       <div class="ra-flow-arrow"><i class="fas fa-arrow-down"></i> Controls applied to reduce this risk</div>
 
       <div class="ra-controls-block">
-        <div class="ra-section-title"><i class="fas fa-shield-alt"></i> Controls <span class="ra-optional">(optional)</span></div>
+        <div class="ra-section-title"><i class="fas fa-shield-alt"></i> Controls</div>
         <div class="ra-control-list">${controlsBody}</div>
         <button type="button" id="raAddControl" class="btn btn-default"><i class="fas fa-plus"></i> Add Control</button>
       </div>

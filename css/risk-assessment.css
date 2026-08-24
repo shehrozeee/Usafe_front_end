@@ -370,10 +370,30 @@
     margin: 16px 0;
 }
 
-.ra-optional {
-    font-weight: 400;
-    text-transform: none;
-    color: var(--usafe-text-light);
+/* Controls are mandatory now (see the Confirm/Submit guards in
+   Js/RiskAssessmentProcessor.js) - the empty state above stays in its normal
+   calm .ra-empty-hint look until the assessor actually tries to move on
+   without one; only then does showControlsRequiredError add this modifier,
+   reusing --ra-danger (the same token Remove/photo-remove already use)
+   rather than a new colour, so a brand-new hazard is not shown as errored
+   before anyone has touched it. */
+.ra-controls-block--error .ra-empty-hint {
+    border-color: var(--ra-danger);
+    color: var(--ra-danger);
+}
+
+.ra-controls-block--error .ra-empty-hint i {
+    color: var(--ra-danger);
+}
+
+.ra-controls-error-msg {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--ra-danger);
+    font-size: 13px;
+    font-weight: 700;
+    margin: 0 0 10px;
 }
 
 /* ── Add buttons: three distinct visual weights so "add task" vs "add
