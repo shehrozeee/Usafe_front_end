@@ -45,6 +45,11 @@ var riskAssessmentState = {
   // Which of the three builder screens is showing, and which task/hazard it
   // is showing. taskIndex/hazardIndex are null on the list screen.
   nav: { screen: 'list', taskIndex: null, hazardIndex: null },
+  // Flips true in confirmHeader(). Distinguishes "still on the header
+  // screen" from "past it" for the draft below - tasks.length alone cannot
+  // do this because removeTask() can empty the list again after the header
+  // is confirmed.
+  headerDone: false,
   // Photos attach to the assessment as a whole, not per task or hazard - see
   // handlePhotoSelect / renderPhotoList. Each entry is { key, name }: key is
   // what uploadFiles returned (what gets sent back to saveRiskAssessment),
@@ -94,6 +99,193 @@ function buildRiskSummary(tasks) {
 
   return summary;
 }
+
+// ── Auto-Save Draft ──────────────────────────────────────────────────────
+// Mirrors Js/GenericQuestioneerProcessor.js's draft pattern exactly (read,
+// never edited): same debounce-plus-interval rhythm, same 'Draft saved'
+// toast throttled to once per 30s, same 'Resume Draft?' dialog wording, same
+// 24h expiry, same try/catch-and-warn around every localStorage call so a
+// private-browsing/quota failure can never break the wizard or block submit.
+//
+// The checklist scopes its key by form (sectionFor + checklist name) because
+// several different checklists can be mid-flight in the same browser. v2 has
+// no template/form name to key on at all (see the file banner above) - there
+// is exactly one risk assessment wizard, and one #riskAssessmentRoot on
+// screen at a time. What still needs distinguishing is two different
+// *people* sharing one device/browser: the draft is keyed per logged-in user
+// (usafe_ra_draft_<userName>) so one assessor's in-progress assessment never
+// resurfaces under another assessor's login.
+//
+// What is deliberately NOT in the draft: riskAssessmentState.photos. Photos
+// are uploaded to S3 the moment they're picked (handlePhotoSelect) - only
+// their already-uploaded keys live in state, same as the checklist's
+// _uploadedFileUrls, which the checklist's own collectDraftData also leaves
+// out. Restoring a photo *key* days later would either point at a file that
+// is still there (nothing to show but a filename - no thumbnail exists to
+// restore either) or, worse, quietly attach a photo the assessor no longer
+// remembers picking. Everything else - header, every task/hazard/control,
+// scores, and which screen they were on - is exactly what collectRaDraftData
+// below captures.
+let _raDraftSaveInterval = null;
+let _raDraftDebounceTimer = null;
+let _raLastToastTime = 0;
+
+const _getRaDraftKey = () => `usafe_ra_draft_${getValue('userName') || 'anon'}`;
+
+const collectRaDraftData = () => ({
+  header: riskAssessmentState.header,
+  headerDone: riskAssessmentState.headerDone,
+  tasks: riskAssessmentState.tasks,
+  nav: riskAssessmentState.nav,
+  timestamp: Date.now(),
+});
+
+const saveRaDraft = () => {
+  try {
+    const draft = collectRaDraftData();
+    localStorage.setItem(_getRaDraftKey(), JSON.stringify(draft));
+    // Show the toast at most once per 30 seconds - identical throttle to the
+    // checklist's, so a burst of typing does not spam it.
+    const now = Date.now();
+    if (typeof showToast === 'function' && now - _raLastToastTime > 30000) {
+      showToast('Draft saved', 'success');
+      _raLastToastTime = now;
+    }
+  } catch (e) {
+    console.warn('Auto-save draft failed:', e);
+  }
+};
+
+/**
+ * Cleared on a successful submit (submitRiskAssessment) - that is the one
+ * unambiguous "this assessment is done" moment. Deliberately NOT called from
+ * the topbar back arrow or any in-wizard "back" navigation: leaving mid-way
+ * through a long, nested assessment (a call comes in, the phone locks) is
+ * exactly the scenario this feature exists for, and the checklist's own back
+ * arrow does not clear its draft either - matching that means an assessor
+ * who leaves and returns later still gets the resume prompt instead of
+ * silently losing everything.
+ */
+const clearRaDraft = () => {
+  if (_raDraftSaveInterval) clearInterval(_raDraftSaveInterval);
+  if (_raDraftDebounceTimer) clearTimeout(_raDraftDebounceTimer);
+  try {
+    localStorage.removeItem(_getRaDraftKey());
+  } catch (e) {
+    console.warn('Clear draft failed:', e);
+  }
+};
+
+/**
+ * Restores wizard position, not just data - the whole point for a form this
+ * long. If the draft never got past the header screen, repopulate its plain
+ * inputs (via .val(), which sets the DOM value property rather than parsing
+ * HTML - no escaping needed here) and leave #raHeaderStep showing, exactly
+ * where confirmHeader() has not yet been called. Otherwise restore the full
+ * task/hazard tree and jump straight back to the list/task/hazard/review
+ * screen the assessor was on, via the same render() every other navigation
+ * function uses - render()'s templates (Templates/RiskAssessmentCard.js)
+ * already escapeHtml every field pulled out of the draft, so no second
+ * escaping pass is needed here.
+ */
+const restoreRaDraft = (draft) => {
+  riskAssessmentState.header = draft.header || riskAssessmentState.header;
+  riskAssessmentState.tasks = Array.isArray(draft.tasks) ? draft.tasks : [];
+  riskAssessmentState.headerDone = !!draft.headerDone;
+
+  if (!riskAssessmentState.headerDone) {
+    const h = riskAssessmentState.header;
+    $('#raActivity').val(h.activity || '');
+    $('#raTypeOfActivity').val(h.typeOfActivity || '');
+    $('#raLocation').val(h.location || '');
+    $('#raEventActivities').val(h.eventActivities || '');
+    $('#raDepartment').val(h.department || '');
+    $('#raArea').val(h.area || '');
+    return;
+  }
+
+  // Past the header: reveal the builder mount point exactly as confirmHeader
+  // does, then land on the saved screen. Guard against a nav pointing at a
+  // task/hazard index that no longer exists (defensive only - normal use
+  // never produces this) by falling back a level at a time.
+  $('#raHeaderStep').hide();
+  $('#raScreen').show();
+
+  let nav = draft.nav || { screen: 'list', taskIndex: null, hazardIndex: null };
+  const task = (nav.taskIndex != null) ? riskAssessmentState.tasks[nav.taskIndex] : undefined;
+  if ((nav.screen === 'task' || nav.screen === 'hazard') && !task) {
+    nav = { screen: 'list', taskIndex: null, hazardIndex: null };
+  } else if (nav.screen === 'hazard' && !task.hazards[nav.hazardIndex]) {
+    nav = { screen: 'task', taskIndex: nav.taskIndex, hazardIndex: null };
+  }
+  riskAssessmentState.nav = nav;
+  render();
+};
+
+const checkForRaDraft = () => {
+  try {
+    const raw = localStorage.getItem(_getRaDraftKey());
+    if (!raw) {
+      startRaDraftAutoSave();
+      return;
+    }
+
+    const draft = JSON.parse(raw);
+    const ageMs = Date.now() - (draft.timestamp || 0);
+    const maxAgeMs = 24 * 60 * 60 * 1000; // 24 hours
+
+    if (ageMs > maxAgeMs) {
+      // Draft too old — discard silently
+      localStorage.removeItem(_getRaDraftKey());
+      startRaDraftAutoSave();
+      return;
+    }
+
+    const draftTime = new Date(draft.timestamp).toLocaleString();
+    Swal.fire({
+      title: 'Resume Draft?',
+      html: `You have an unsaved draft from <strong>${draftTime}</strong>. Would you like to resume?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Resume',
+      cancelButtonText: 'Start Fresh',
+      confirmButtonColor: '#28a745',
+      cancelButtonColor: '#dc3545',
+      allowOutsideClick: false
+    }).then((result) => {
+      if (result.isConfirmed) {
+        restoreRaDraft(draft);
+      } else {
+        localStorage.removeItem(_getRaDraftKey());
+      }
+      startRaDraftAutoSave();
+    });
+  } catch (e) {
+    console.warn('Draft check failed:', e);
+    startRaDraftAutoSave();
+  }
+};
+
+const startRaDraftAutoSave = () => {
+  // Save every 10 seconds
+  _raDraftSaveInterval = setInterval(saveRaDraft, 10000);
+
+  // Debounced save on input change (2s) - bound to #riskAssessmentRoot,
+  // which wraps both the header screen and #raScreen for the wizard's whole
+  // lifetime, so this one binding covers every screen without rebinding on
+  // each render().
+  const root = document.getElementById('riskAssessmentRoot');
+  if (root) {
+    root.addEventListener('input', () => {
+      if (_raDraftDebounceTimer) clearTimeout(_raDraftDebounceTimer);
+      _raDraftDebounceTimer = setTimeout(saveRaDraft, 2000);
+    });
+    root.addEventListener('change', () => {
+      if (_raDraftDebounceTimer) clearTimeout(_raDraftDebounceTimer);
+      _raDraftDebounceTimer = setTimeout(saveRaDraft, 2000);
+    });
+  }
+};
 
 // ── Navigation ─────────────────────────────────────────────────────────────
 
@@ -407,7 +599,10 @@ function submitRiskAssessment() {
   // string - handing jQuery an object here form-encodes it and the API sees
   // nothing. Errors go to the shared handleRequestError, same as every other page.
   sendRequest('api/RiskAssessment/saveRiskAssessment', 'POST', JSON.stringify(payload),
-    function () { window.location.href = '/Pages/reporting/reporting.html'; });
+    function () {
+      clearRaDraft();
+      window.location.href = '/Pages/reporting/reporting.html';
+    });
 }
 
 // ── Header gate ──────────────────────────────────────────────────────────
@@ -435,6 +630,7 @@ function confirmHeader() {
   $('#raHeaderStep').hide();
   $('#raScreen').show();
   riskAssessmentState.tasks = [makeTask()];
+  riskAssessmentState.headerDone = true;
   goToList();
 }
 
@@ -573,4 +769,9 @@ $(function () {
   });
 
   $('#raHeaderNext').on('click', confirmHeader);
+
+  // Offer to resume a draft (or start the auto-save cycle if there isn't
+  // one) once every handler above is wired up, exactly the same order the
+  // checklist wizard does it in.
+  checkForRaDraft();
 });

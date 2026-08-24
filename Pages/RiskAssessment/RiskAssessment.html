@@ -22,6 +22,10 @@
     <link rel="stylesheet" href="../../css/loader.css" />
     <link rel="stylesheet" href="../../css/usafe-forms.css" />
     <link rel="stylesheet" href="../../css/risk-assessment.css" />
+    <!-- Draft auto-save reuses the checklist wizard's 'Draft saved' toast
+         (Js/GenericQuestioneerProcessor.js) verbatim - both its styling and
+         its script live in these shared files, same as genericChecklist.html. -->
+    <link rel="stylesheet" href="../../css/usafe-toast.css">
 
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"
         integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g=" crossorigin="anonymous"></script>
@@ -41,6 +45,7 @@
     <script src="../../Helpers/HttpHandler.js"></script>
     <script src="../../Js/Authentication/CheckUser.js"></script>
     <script src="../../Helpers/Validation.js"></script>
+    <script src="../../Helpers/Toast.js"></script>
 
     <!-- Client risk matrix (unchanged, reused as-is) + the v2 builder templates
          and the wizard logic that consumes them. -->

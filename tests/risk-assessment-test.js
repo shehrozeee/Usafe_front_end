@@ -976,6 +976,209 @@ async function main() {
     await page.waitForURL('**/reporting.html', { timeout: 5000 }).catch(() => {});
   });
 
+  console.log('\nDraft auto-save (matches Js/GenericQuestioneerProcessor.js\'s checklist pattern)');
+
+  // Scoped per logged-in user (see _getRaDraftKey in Js/RiskAssessmentProcessor.js) -
+  // setupAuth always seeds this same userName, so every draft test reads/writes
+  // this one key directly to set up or verify state without waiting on timers
+  // where a timer isn't the thing under test.
+  const RA_DRAFT_KEY = 'usafe_ra_draft_mohsin@be.com.pk';
+
+  await runTest('filling part of an assessment then reloading offers the resume prompt', async () => {
+    await page.goto(PAGE_URL);
+    await page.evaluate((key) => localStorage.removeItem(key), RA_DRAFT_KEY);
+    await fillHeader(page, { activity: 'Draft Prompt Test' });
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.fill('.ra-task-name-input', 'Rig the stage');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+    await page.fill('.ra-hazard-text', 'Falling truss');
+
+    // Let the 2s input-debounce actually persist the draft before reloading -
+    // this is exercising the real timer, not a forced save.
+    await page.waitForTimeout(2200);
+
+    await page.reload();
+    await page.waitForSelector('.swal2-popup', { state: 'visible' });
+
+    const title = await page.textContent('.swal2-title');
+    assert.strictEqual(title.trim(), 'Resume Draft?');
+    const html = await page.textContent('.swal2-html-container');
+    assert.ok(html.includes('unsaved draft from'), `expected draft timestamp wording, got: "${html}"`);
+    assert.ok(html.includes('Would you like to resume?'), `expected exact wording, got: "${html}"`);
+    assert.strictEqual((await page.textContent('.swal2-confirm')).trim(), 'Resume');
+    assert.strictEqual((await page.textContent('.swal2-cancel')).trim(), 'Start Fresh');
+
+    await page.click('.swal2-cancel');
+  });
+
+  await runTest('resuming restores the header, tasks, hazards, scores and controls intact', async () => {
+    await page.goto(PAGE_URL);
+    await page.evaluate((key) => localStorage.removeItem(key), RA_DRAFT_KEY);
+    await fillHeader(page, {
+      activity: 'Resume Restore Activity',
+      department: 'Ops',
+      area: 'Zone 9',
+    });
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.fill('.ra-task-name-input', 'Rig the stage');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+    await page.fill('.ra-hazard-text', 'Falling truss');
+    await page.selectOption('.ra-base-severity', '8');
+    await page.selectOption('.ra-base-probability', '4');
+    await page.selectOption('.ra-residual-severity', '2');
+    await page.selectOption('.ra-residual-probability', '2');
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="0"]', 'Rated rigging only');
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="1"]', 'Daily inspection');
+
+    await page.waitForTimeout(2200); // let the debounce persist the draft
+
+    await page.reload();
+    await page.waitForSelector('.swal2-confirm', { state: 'visible' });
+    await page.click('.swal2-confirm'); // Resume
+
+    // Restoring must put the assessor back on the exact screen they left,
+    // not just recover the data.
+    await page.waitForSelector('.ra-hazard-screen');
+
+    const state = await page.evaluate(() => window.riskAssessmentState);
+    assert.strictEqual(state.header.activity, 'Resume Restore Activity');
+    assert.strictEqual(state.header.department, 'Ops');
+    assert.strictEqual(state.header.area, 'Zone 9');
+    assert.strictEqual(state.headerDone, true);
+    assert.strictEqual(state.tasks.length, 1);
+    assert.strictEqual(state.tasks[0].taskName, 'Rig the stage');
+    assert.strictEqual(state.tasks[0].hazards.length, 1);
+
+    const hazard = state.tasks[0].hazards[0];
+    assert.strictEqual(hazard.hazardText, 'Falling truss');
+    assert.strictEqual(hazard.baseSeverity, 8);
+    assert.strictEqual(hazard.baseProbability, 4);
+    assert.strictEqual(hazard.residualSeverity, 2);
+    assert.strictEqual(hazard.residualProbability, 2);
+    assert.deepStrictEqual(hazard.controls.map(c => c.controlText),
+      ['Rated rigging only', 'Daily inspection']);
+
+    assert.strictEqual(state.nav.screen, 'hazard');
+    assert.strictEqual(state.nav.taskIndex, 0);
+    assert.strictEqual(state.nav.hazardIndex, 0);
+
+    // And the DOM itself reflects the restored data, not just in-memory state.
+    assert.strictEqual(await page.inputValue('.ra-hazard-text'), 'Falling truss');
+    const controlVals = await page.$$eval('.ra-control-text', els => els.map(el => el.value));
+    assert.deepStrictEqual(controlVals, ['Rated rigging only', 'Daily inspection']);
+  });
+
+  await runTest('declining the prompt starts clean and does not leave the old draft to reappear later', async () => {
+    await page.goto(PAGE_URL);
+    await page.evaluate((key) => localStorage.removeItem(key), RA_DRAFT_KEY);
+    await fillHeader(page, { activity: 'Discard Me' });
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.fill('.ra-task-name-input', 'Temp Task');
+
+    await page.waitForTimeout(2200);
+
+    await page.reload();
+    await page.waitForSelector('.swal2-cancel', { state: 'visible' });
+    await page.click('.swal2-cancel'); // Start Fresh
+
+    await page.waitForSelector('#raHeaderStep', { state: 'visible' });
+    assert.strictEqual(await page.inputValue('#raActivity'), '',
+      'starting fresh must not prefill the discarded draft\'s activity');
+
+    const draftGoneImmediately = await page.evaluate((key) => localStorage.getItem(key), RA_DRAFT_KEY);
+    assert.strictEqual(draftGoneImmediately, null, 'declining must remove the old draft immediately');
+
+    // A later reload must not resurrect what was just discarded.
+    await page.reload();
+    await page.waitForTimeout(300);
+    assert.strictEqual(await page.isVisible('.swal2-popup'), false,
+      'a discarded draft must never reappear on a later reload');
+  });
+
+  await runTest('submitting clears the draft so the next assessment starts empty', async () => {
+    await page.goto(PAGE_URL);
+    await page.evaluate((key) => localStorage.removeItem(key), RA_DRAFT_KEY);
+    await goToReviewWithOneHazard(page);
+
+    await page.waitForTimeout(2200); // let a draft actually get persisted before submit
+
+    const draftBeforeSubmit = await page.evaluate((key) => localStorage.getItem(key), RA_DRAFT_KEY);
+    assert.ok(draftBeforeSubmit, 'sanity check: a draft must exist before submit for this test to prove anything');
+
+    await Promise.all([
+      page.waitForRequest('**/api/RiskAssessment/saveRiskAssessment'),
+      page.click('#raSubmit'),
+    ]);
+    await page.waitForURL('**/reporting.html', { timeout: 5000 }).catch(() => {});
+
+    const draftAfterSubmit = await page.evaluate((key) => localStorage.getItem(key), RA_DRAFT_KEY);
+    assert.strictEqual(draftAfterSubmit, null, 'a successful submit must clear the draft');
+
+    // The next assessment must start empty: no leftover resume prompt.
+    await page.goto(PAGE_URL);
+    await page.waitForTimeout(300);
+    assert.strictEqual(await page.isVisible('.swal2-popup'), false);
+    await page.waitForSelector('#raHeaderStep', { state: 'visible' });
+  });
+
+  await runTest('a localStorage failure does not break the wizard or block submitting', async () => {
+    await fillHeader(page, { activity: 'Quota Exceeded Test' });
+
+    const pageErrors = [];
+    const onPageError = (err) => pageErrors.push(err.message);
+    page.on('pageerror', onPageError);
+
+    // Simulate private-browsing/quota-exceeded: only the draft key's writes
+    // throw, so auth/session localStorage keys the rest of the app depends on
+    // are untouched.
+    await page.evaluate((key) => {
+      window.__realSetItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (k, v) {
+        if (k === key) throw new DOMException('Quota exceeded', 'QuotaExceededError');
+        return window.__realSetItem.call(this, k, v);
+      };
+    }, RA_DRAFT_KEY);
+
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.fill('.ra-task-name-input', 'Loading Dock Setup');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+    await page.fill('.ra-hazard-text', 'Forklift near pedestrians');
+
+    // Let the debounce timer fire and attempt (and fail) to save.
+    await page.waitForTimeout(2200);
+
+    assert.deepStrictEqual(pageErrors, [],
+      `a failed draft save must never throw up to the page, got: ${pageErrors.join('; ')}`);
+
+    // The wizard must still work end to end despite every draft save failing.
+    await page.click('#raConfirmHazard');
+    await page.waitForSelector('.ra-task-screen');
+    await page.click('#raConfirmTask');
+    await page.waitForSelector('.ra-list-screen');
+    await page.click('#raReviewBtn');
+    await page.waitForSelector('.ra-review-screen');
+
+    const [request] = await Promise.all([
+      page.waitForRequest('**/api/RiskAssessment/saveRiskAssessment'),
+      page.click('#raSubmit'),
+    ]);
+    const body = JSON.parse(request.postData());
+    assert.strictEqual(body.tasks[0].hazards[0].hazardText, 'Forklift near pedestrians',
+      'submitting must still work with a permanently failing draft save');
+
+    assert.deepStrictEqual(pageErrors, [], 'submit itself must not have thrown either');
+    page.off('pageerror', onPageError);
+  });
+
   console.log('\nReport detail view (reportDetails.html) — reading back a saved nested assessment');
 
   // v2's fetchTaskDetails response for a Risk Assessment: riskAssessmentData
