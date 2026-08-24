@@ -62,6 +62,10 @@ function makeHazard() {
     hazardText: '',
     actOrCondition: 'Condition',
     personAtRisk: '',
+    // Free-text note on the base score. Optional - never validated, never
+    // blocks Confirm Hazard or Submit (see validateHazard). It IS carried in
+    // the auto-saved draft, unlike photos, because it is plain state.
+    baseRiskNote: '',
     baseSeverity: 2,
     baseProbability: 2,
     controls: [],
@@ -829,6 +833,7 @@ function submitRiskAssessment() {
             hazardText: hazard.hazardText,
             actOrCondition: hazard.actOrCondition,
             personAtRisk: hazard.personAtRisk,
+            baseRiskNote: hazard.baseRiskNote,
             baseSeverity: hazard.baseSeverity,
             baseProbability: hazard.baseProbability,
             residualSeverity: hazard.residualSeverity,
@@ -988,6 +993,10 @@ $(function () {
   $('#riskAssessmentRoot').on('input', '.ra-person', function () {
     const hazard = currentHazard();
     if (hazard) hazard.personAtRisk = $(this).val();
+  });
+  $('#riskAssessmentRoot').on('input', '.ra-base-note', function () {
+    const hazard = currentHazard();
+    if (hazard) hazard.baseRiskNote = $(this).val();
   });
   $('#riskAssessmentRoot').on('change',
     '.ra-base-severity, .ra-base-probability, .ra-residual-severity, .ra-residual-probability',

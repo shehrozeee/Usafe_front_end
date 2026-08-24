@@ -212,8 +212,14 @@ function createTaskScreen(task, index) {
  * than leaving three stacked, visually unrelated form-groups for the assessor
  * to mentally connect. The severity/probability/rating/category classes are
  * unchanged (tests select on them directly).
+ *
+ * extraHtml is an optional block appended inside the same box, below the
+ * result line - used by the Base Risk section for its free-text note. It sits
+ * inside the box rather than beside it so the note is unmistakably about
+ * THIS score: a note floating between the base box and the controls block
+ * would read as a comment on the controls instead.
  */
-function createRatingSection(title, subtitle, prefix, severity, probability, scale) {
+function createRatingSection(title, subtitle, prefix, severity, probability, scale, extraHtml) {
   const result = evaluateRisk(severity, probability);
   return `
     <div class="ra-section ra-section--${prefix}">
@@ -233,7 +239,26 @@ function createRatingSection(title, subtitle, prefix, severity, probability, sca
         <span class="ra-rating-line">Rating <strong class="ra-${prefix}-rating">${result ? result.rating : '-'}</strong></span>
         ${categoryChip(result ? result.category : null, `ra-${prefix}-category`)}
       </div>
+      ${extraHtml || ''}
     </div>`;
+}
+
+/**
+ * Free-text note on the base score. Optional - the ONLY optional field on a
+ * hazard besides the assessment's photos, so it carries an explicit
+ * "(optional)" on its label: every other label on this screen means required,
+ * and an unmarked field here would be read the same way and block nobody's
+ * progress for no reason. Deliberately one box, not a repeatable list like
+ * Controls: a control is an enumerable thing that gets counted and listed,
+ * this is one piece of commentary about one score.
+ */
+function createBaseNoteField(value) {
+  return `
+      <div class="form-group ra-base-note-group">
+        <label>Notes <span class="ra-optional-tag">(optional)</span></label>
+        <textarea class="form-control ra-base-note" rows="2"
+          placeholder="What was seen, or why this score?">${escapeHtml(value)}</textarea>
+      </div>`;
 }
 
 /**
@@ -316,7 +341,8 @@ function createHazardScreen(task, hazard, taskIndex, hazardIndex, scale) {
         </div>
       </div>
 
-      ${createRatingSection('Base Risk', 'before controls', 'base', hazard.baseSeverity, hazard.baseProbability, scale)}
+      ${createRatingSection('Base Risk', 'before controls', 'base', hazard.baseSeverity, hazard.baseProbability, scale,
+        createBaseNoteField(hazard.baseRiskNote || ''))}
 
       <div class="ra-flow-arrow"><i class="fas fa-arrow-down"></i> Controls applied to reduce this risk</div>
 
@@ -359,31 +385,17 @@ function worstFromSummaryRow(row) {
   return worstIndex === -1 ? null : CATEGORY_ORDER[worstIndex];
 }
 
-function createRiskSummaryTable(summary) {
-  const categories = ['VL', 'L', 'M', 'M+', 'H', 'VH'];
-  const headerCells = categories.map(function (c) {
-    const style = categoryChipStyle(c);
-    return `<th style="background-color:${style.bg};color:${style.color}">${c}</th>`;
-  }).join('');
-  const baseCells = categories.map(c => `<td>${summary.base[c]}</td>`).join('');
-  const residualCells = categories.map(c => `<td>${summary.residual[c]}</td>`).join('');
-
-  return `
-    <table class="table table-bordered ra-summary-table">
-      <thead><tr><th></th>${headerCells}</tr></thead>
-      <tbody>
-        <tr><th>Base</th>${baseCells}</tr>
-        <tr><th>Residual</th>${residualCells}</tr>
-      </tbody>
-    </table>`;
-}
-
 /**
- * The one-line "so what" that opens the review screen: how many hazards were
- * logged and the worst category before vs. after controls, in the same big
- * chips used throughout the wizard - so the risk profile reads as the
- * assessment's conclusion, not as a small bordered table buried between the
- * header fields and a long list of tasks.
+ * The review screen's whole risk profile: how many hazards were logged, and
+ * the worst category before vs. after controls.
+ *
+ * This replaced a 6-column VL..VH heat-mapped count table (Base row, Residual
+ * row). Assessors could not read it: on a phone it was six near-identical
+ * columns of mostly zeroes, and the two numbers that mattered were never
+ * labelled as base and residual - people had to decode a matrix legend to
+ * learn something the two chips below state outright. The counts per category
+ * are still available to anyone who needs them, on the admin detail page.
+ * Do not reinstate the table here.
  */
 function createReviewVerdict(summary) {
   const hazardCount = CATEGORY_ORDER.reduce((sum, c) => sum + summary.base[c], 0);
@@ -394,11 +406,21 @@ function createReviewVerdict(summary) {
 
   return `
     <div class="ra-review-verdict">
-      <span>${hazardCount} hazard${hazardCount === 1 ? '' : 's'} assessed &mdash; worst risk</span>
-      ${categoryChip(worstBase)}
-      <i class="fas fa-arrow-right"></i>
-      ${categoryChip(worstResidual)}
-      <span>after controls</span>
+      <div class="ra-verdict-count">${hazardCount} hazard${hazardCount === 1 ? '' : 's'} assessed</div>
+      <div class="ra-verdict-pair">
+        <div class="ra-verdict-tile">
+          <span class="ra-verdict-label">Base risk</span>
+          ${categoryChip(worstBase)}
+          <span class="ra-verdict-sub">before controls</span>
+        </div>
+        <i class="fas fa-arrow-right ra-verdict-arrow"></i>
+        <div class="ra-verdict-tile">
+          <span class="ra-verdict-label">Residual risk</span>
+          ${categoryChip(worstResidual)}
+          <span class="ra-verdict-sub">after controls</span>
+        </div>
+      </div>
+      <div class="ra-verdict-foot">Highest-rated of the ${hazardCount} hazard${hazardCount === 1 ? '' : 's'}.</div>
     </div>`;
 }
 
@@ -422,6 +444,7 @@ function createReviewList(tasks) {
             Person at risk: ${escapeHtml(hazard.personAtRisk) || '-'}<br>
             Base ${categoryChip(base ? base.category : null)} &rarr; Residual ${categoryChip(residual ? residual.category : null)}
           </div>
+          ${hazard.baseRiskNote ? `<div class="ra-review-hazard-note">${escapeHtml(hazard.baseRiskNote)}</div>` : ''}
           ${controlsHtml}
         </li>`;
     }).join('');
@@ -449,7 +472,6 @@ function createReviewScreen(header, tasks, summary, photos) {
       <div class="ra-review-summary">
         <div class="ra-review-summary-title">Risk Profile</div>
         ${createReviewVerdict(summary)}
-        ${createRiskSummaryTable(summary)}
       </div>
 
       <ul class="ra-review-list">${createReviewList(tasks)}</ul>

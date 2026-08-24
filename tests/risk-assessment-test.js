@@ -440,6 +440,127 @@ async function main() {
     assert.strictEqual(cardText.trim(), 'Forklift collision', 'the hazard must show up on the task screen, not be removed');
   });
 
+  console.log('\nBase risk note (the one optional field on a hazard)');
+
+  await runTest('the base risk note survives Confirm Hazard and reaches the save payload', async () => {
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.fill('.ra-task-name-input', 'Setup Activity');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+    await page.fill('.ra-hazard-text', 'Electric shock');
+    await page.fill('.ra-person', 'Rigger');
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="0"]', 'Isolate power before rigging');
+
+    // The note lives inside the Base Risk box, not beside it - it is a comment
+    // on that score, not on the controls that follow it.
+    const insideBaseSection = await page.evaluate(() =>
+      !!document.querySelector('.ra-section--base .ra-base-note'));
+    assert.strictEqual(insideBaseSection, true, 'the note field must sit inside the Base Risk section');
+
+    await page.fill('.ra-base-note', 'Distribution board was left open on the last visit.');
+
+    await page.click('#raConfirmHazard');
+    await page.waitForSelector('.ra-task-screen');
+
+    const note = await page.evaluate(() => window.riskAssessmentState.tasks[0].hazards[0].baseRiskNote);
+    assert.strictEqual(note, 'Distribution board was left open on the last visit.',
+      'the note must survive the navigation like every other hazard field');
+
+    await page.click('#raConfirmTask');
+    await page.waitForSelector('.ra-list-screen');
+    await page.click('#raReviewBtn');
+    await page.waitForSelector('.ra-review-screen');
+
+    const reviewText = await page.textContent('.ra-review-list');
+    assert.ok(reviewText.includes('Distribution board was left open on the last visit.'),
+      'the note must be readable on the review screen before submitting');
+
+    const [request] = await Promise.all([
+      page.waitForRequest('**/api/RiskAssessment/saveRiskAssessment'),
+      page.click('#raSubmit'),
+    ]);
+    const body = JSON.parse(request.postData());
+    assert.strictEqual(body.tasks[0].hazards[0].baseRiskNote,
+      'Distribution board was left open on the last visit.');
+    await page.waitForURL('**/reporting.html', { timeout: 5000 }).catch(() => {});
+  });
+
+  await runTest('a blank base risk note never blocks Confirm Hazard or the review gate', async () => {
+    // Every other text field on a hazard is rejected when blank. This one must
+    // not be, or the wizard gains a required field nobody asked for.
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.fill('.ra-task-name-input', 'Travel to Store');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+    await page.fill('.ra-hazard-text', 'Road traffic accident');
+    await page.fill('.ra-person', 'BA');
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="0"]', 'Online taxi services used');
+    // Note deliberately left empty - but it has to actually be on screen,
+    // or this test passes against a build that never grew the field.
+    await page.waitForSelector('.ra-base-note');
+    assert.strictEqual(await page.inputValue('.ra-base-note'), '',
+      'the note starts empty on a fresh hazard');
+
+    await page.click('#raConfirmHazard');
+    await page.waitForSelector('.ra-task-screen');
+    await page.click('#raConfirmTask');
+    await page.waitForSelector('.ra-list-screen');
+    await page.click('#raReviewBtn');
+    await page.waitForSelector('.ra-review-screen');
+
+    const error = await page.textContent('#raError');
+    assert.strictEqual(error, '', 'an empty note must not be treated as a missing required field');
+
+    // And it leaves no empty note block behind on the review.
+    const noteCount = await page.evaluate(() =>
+      document.querySelectorAll('.ra-review-hazard-note').length);
+    assert.strictEqual(noteCount, 0, 'an unwritten note must render nothing at all');
+  });
+
+  await runTest('the review risk profile states base and residual outright, with no VL..VH count table', async () => {
+    await fillHeader(page);
+    await page.click('.ra-task-open');
+    await page.waitForSelector('.ra-task-screen');
+    await page.fill('.ra-task-name-input', 'Setup Activity');
+    await page.click('#raAddHazard');
+    await page.waitForSelector('.ra-hazard-screen');
+    await page.fill('.ra-hazard-text', 'Electric shock');
+    await page.fill('.ra-person', 'Rigger');
+    await page.selectOption('.ra-base-severity', '8');
+    await page.selectOption('.ra-base-probability', '1');   // M+
+    await page.click('#raAddControl');
+    await page.fill('.ra-control-text[data-control-index="0"]', 'Isolate power before rigging');
+    await page.selectOption('.ra-residual-severity', '4');
+    await page.selectOption('.ra-residual-probability', '2'); // L
+    await page.click('#raConfirmHazard');
+    await page.waitForSelector('.ra-task-screen');
+    await page.click('#raConfirmTask');
+    await page.waitForSelector('.ra-list-screen');
+    await page.click('#raReviewBtn');
+    await page.waitForSelector('.ra-review-screen');
+
+    // The heat-mapped six-column table was unreadable on a phone and never
+    // said which number was base and which was residual. It must not come back.
+    const tableCount = await page.evaluate(() =>
+      document.querySelectorAll('.ra-summary-table').length);
+    assert.strictEqual(tableCount, 0, 'the VL..VH count table must not be on the review screen');
+
+    const labels = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('.ra-verdict-label')).map(el => el.textContent.trim()));
+    assert.deepStrictEqual(labels, ['Base risk', 'Residual risk'],
+      'the two risks must be labelled, not left to be decoded from a matrix');
+
+    const chips = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('.ra-verdict-tile .ra-chip')).map(el => el.textContent.trim()));
+    assert.deepStrictEqual(chips, ['M+', 'L'], "each tile shows that hazard's own category");
+  });
+
   await runTest('Confirm Task returns to the list and keeps the task name and its hazards', async () => {
     await fillHeader(page);
     await page.click('.ra-task-open');

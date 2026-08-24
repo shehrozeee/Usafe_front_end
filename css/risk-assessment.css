@@ -295,6 +295,26 @@
     color: var(--usafe-text-light);
 }
 
+/* Free-text note inside the Base Risk box. Ruled off from the score above it
+   so the box still reads as "these two selects make that rating", with the
+   note as commentary underneath rather than a third scoring input. */
+.ra-base-note-group {
+    margin: 12px 0 0;
+    padding-top: 12px;
+    border-top: 1px dashed var(--usafe-border);
+}
+
+.ra-base-note {
+    resize: vertical;
+}
+
+.ra-optional-tag {
+    text-transform: none;
+    font-weight: 500;
+    letter-spacing: normal;
+    color: var(--usafe-text-light);
+}
+
 .ra-flow-arrow {
     display: flex;
     align-items: center;
@@ -538,17 +558,62 @@
 }
 
 .ra-review-verdict {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-    font-size: 14px;
     color: var(--usafe-text);
-    margin-bottom: 12px;
+    margin-bottom: 4px;
 }
 
-.ra-review-verdict strong {
+.ra-verdict-count {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--usafe-text-mid);
+    margin-bottom: 10px;
+}
+
+/* Two labelled tiles with the arrow between them - the drop from base to
+   residual is the assessment's conclusion, so it gets stated plainly rather
+   than left to be counted out of a category table. */
+.ra-verdict-pair {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ra-verdict-tile {
+    flex: 1;
+    text-align: center;
+    padding: 10px 6px;
+    background: var(--usafe-surface);
+    border: 1px solid var(--usafe-border);
+    border-radius: var(--usafe-radius-sm);
+}
+
+.ra-verdict-label {
+    display: block;
+    font-size: 11px;
     font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--usafe-text-mid);
+    margin-bottom: 6px;
+}
+
+.ra-verdict-sub {
+    display: block;
+    font-size: 11px;
+    color: var(--usafe-text-light);
+    margin-top: 6px;
+}
+
+.ra-verdict-arrow {
+    flex: 0 0 auto;
+    font-size: 16px;
+    color: var(--usafe-text-light);
+}
+
+.ra-verdict-foot {
+    font-size: 11px;
+    color: var(--usafe-text-light);
+    margin-top: 8px;
 }
 
 .ra-task-card,
@@ -606,6 +671,18 @@
     gap: 6px;
 }
 
+/* Only rendered when the assessor actually wrote one - an empty note leaves
+   no trace on the review, the same as an unfilled optional field anywhere. */
+.ra-review-hazard-note {
+    font-size: 12px;
+    font-style: italic;
+    color: var(--usafe-text-mid);
+    border-left: 2px solid var(--usafe-border);
+    padding-left: 8px;
+    margin: 0 0 8px;
+    white-space: pre-wrap;
+}
+
 .ra-review-controls {
     margin: 8px 0 0;
     padding-left: 20px;
@@ -654,38 +731,6 @@
     text-align: right;
     word-break: break-word;
     font-weight: 600;
-}
-
-/* Heat-mapped summary table: each column tinted with its own risk colour so
-   the worst column is visible before reading a single number. */
-.ra-summary-table {
-    font-size: 12px;
-    text-align: center;
-    background: var(--usafe-white);
-    margin: 0;
-}
-
-.ra-summary-table th,
-.ra-summary-table td {
-    padding: 8px 4px;
-    vertical-align: middle;
-}
-
-.ra-summary-table thead th {
-    font-weight: 800;
-    color: var(--usafe-charcoal);
-}
-
-.ra-summary-table tbody th {
-    text-align: left;
-    font-size: 11px;
-    text-transform: uppercase;
-    color: var(--usafe-text-mid);
-    white-space: nowrap;
-}
-
-.ra-summary-table td {
-    font-weight: 700;
 }
 
 .ra-photo-section {
