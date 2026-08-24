@@ -362,30 +362,16 @@ function goToHazard(taskIndex, hazardIndex) {
 /**
  * Mirrors the server's own rejection rules (RiskAssessmentController.
  * SaveRiskAssessment) so the assessor sees the problem before submitting
- * rather than after a 400: no tasks at all, a task with no hazards, or (as of
- * this reversal - a hazard with no controls used to be an accepted finding,
- * it no longer is) a hazard with no non-blank control. Each check is named -
- * "a hazard is missing a control" is useless once there are a dozen hazards
- * across five tasks, so every message below points at one specific task and
- * hazard by ordinal, plus its own text when it has one.
+ * rather than after a 400 - see findIncomplete for the full list and the
+ * order they're checked in. Reached from the list screen, which is not
+ * nested inside any task/hazard, so there is nowhere further to jump to:
+ * unlike Submit's own guard below, this only ever has to explain what is
+ * wrong, not navigate to it.
  */
 function tryGoToReview() {
-  if (!riskAssessmentState.tasks.length) {
-    $('#raError').text('Add at least one task before submitting.');
-    return;
-  }
-
-  const emptyIndex = riskAssessmentState.tasks.findIndex(t => t.hazards.length === 0);
-  if (emptyIndex !== -1) {
-    const task = riskAssessmentState.tasks[emptyIndex];
-    const label = task.taskName ? `"${escapeHtml(task.taskName)}"` : `${emptyIndex + 1}`;
-    $('#raError').text(`Task ${label} needs at least one hazard before you can submit.`);
-    return;
-  }
-
-  const missing = findMissingControlHazard(riskAssessmentState.tasks);
+  const missing = findIncomplete(riskAssessmentState.tasks);
   if (missing) {
-    $('#raError').text(describeMissingControlHazard(missing));
+    $('#raError').text(describeIncomplete(missing));
     return;
   }
 
@@ -398,6 +384,8 @@ function tryGoToReview() {
  * A control whose text is empty or whitespace-only satisfies the letter of
  * "has a control" and none of its purpose (a checkbox ticked with nothing
  * behind it), so it is treated exactly like having no control row at all.
+ * Every other required-field check in this file uses the same whitespace
+ * rule via isBlank() below, for the same reason.
  */
 function hazardHasControl(hazard) {
   const controls = (hazard && hazard.controls) || [];
@@ -406,70 +394,219 @@ function hazardHasControl(hazard) {
   });
 }
 
+/** Empty, missing, or whitespace-only - treated identically everywhere a text field is required. */
+function isBlank(value) {
+  return !value || !String(value).trim();
+}
+
+/** "Task 2 ("Setup Activity")" / "Hazard 3" - ordinal always present (so the
+ * task/hazard can be found even before it has a name - or *because* it does
+ * not, which is now the normal failure case this wizard exists to prevent),
+ * the quoted free text appended only when there is a non-blank one. Escaped:
+ * this lands in #raError via .text(), which is already injection-safe on its
+ * own, but every user-typed value gets routed through escapeHtml before it
+ * reaches the DOM regardless of sink, same rule as everywhere else in this
+ * wizard. */
+function taskDescriptor(task, index) {
+  return !isBlank(task.taskName) ? `Task ${index + 1} ("${escapeHtml(task.taskName)}")` : `Task ${index + 1}`;
+}
+
+function hazardDescriptor(hazard, index) {
+  return !isBlank(hazard.hazardText) ? `Hazard ${index + 1} ("${escapeHtml(hazard.hazardText)}")` : `Hazard ${index + 1}`;
+}
+
 /**
- * First hazard, walked in the same task/hazard order the payload is built in
- * (submitRiskAssessment), that has no non-blank control - or null if every
- * hazard is covered. "First" here is deliberate: naming every offender at
- * once would need a very different UI, and the assessor fixes one at a time
- * anyway, so pointing at the first is enough to unblock them and this same
- * function gets called again after they fix it.
+ * Everything a hazard now requires, keyed the same way in every place that
+ * needs to know about it: which CSS hooks light it up on the hazard screen
+ * (selector/errorClass/msgClass, mirroring the controls-block treatment that
+ * already existed), what the inline banner says in place, the short noun
+ * phrase used to build the Confirm-time "still needs ..." sentence (label),
+ * and the "no ..." fragment used to build the Submit-time "has no ... and no
+ * ..." sentence (submitPhrase - deliberately keeps the literal words "no
+ * control" for the control case, matching the wording this guard has always
+ * used). One map, so a hazard missing several fields at once - the common
+ * case for a hazard screen, where all three live together - reports every
+ * one of them in a single pass instead of sending the assessor back three
+ * times for one field each.
  */
-function findMissingControlHazard(tasks) {
+const HAZARD_ISSUE_INFO = {
+  hazardText: {
+    selector: '.ra-hazardtext-block', errorClass: 'ra-hazardtext-block--error', msgClass: 'ra-hazardtext-error-msg',
+    inlineMsg: 'Describe the hazard before you can continue.',
+    label: 'a hazard description', submitPhrase: 'no hazard text',
+  },
+  personAtRisk: {
+    selector: '.ra-person-block', errorClass: 'ra-person-block--error', msgClass: 'ra-person-error-msg',
+    inlineMsg: 'Enter who is at risk before you can continue.',
+    label: 'who is at risk', submitPhrase: 'no person at risk',
+  },
+  control: {
+    selector: '.ra-controls-block', errorClass: 'ra-controls-block--error', msgClass: 'ra-controls-error-msg',
+    inlineMsg: 'Add at least one control before you can continue.',
+    label: 'at least one control', submitPhrase: 'no control',
+  },
+};
+
+function hazardIssueFragments(hazard) {
+  const issues = [];
+  if (isBlank(hazard.hazardText)) issues.push('hazardText');
+  if (isBlank(hazard.personAtRisk)) issues.push('personAtRisk');
+  if (!hazardHasControl(hazard)) issues.push('control');
+  return issues;
+}
+
+/** "a and b" / "a, b and c" / "a" - shared by both the Confirm-time label list and the Submit-time phrase list. */
+function joinList(items) {
+  if (items.length <= 1) return items[0] || '';
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
+function joinIssueLabels(issues) {
+  return joinList(issues.map(key => HAZARD_ISSUE_INFO[key].label));
+}
+
+function joinIssueSubmitPhrases(issues) {
+  return joinList(issues.map(key => HAZARD_ISSUE_INFO[key].submitPhrase));
+}
+
+/**
+ * Clears every hazard-field error banner this file can show, regardless of
+ * which one(s) are currently up - safe to call even when none are, and safe
+ * to call before re-marking a fresh set after the assessor fixes only some
+ * of several problems (see validateHazardScreen). Normal navigation never
+ * needs this: render() replaces the whole screen's HTML, which already wipes
+ * any banner along with it - this exists only for the "same screen, tries
+ * again" case a full render never happens for.
+ */
+function clearHazardScreenErrors() {
+  Object.keys(HAZARD_ISSUE_INFO).forEach(function (key) {
+    const info = HAZARD_ISSUE_INFO[key];
+    $(info.selector).removeClass(info.errorClass).find('.' + info.msgClass).remove();
+  });
+}
+
+/** Lights up every block named in `issues`, each with its own banner - not just the first - and returns the first one found (for scrolling), or an empty jQuery set if the hazard screen is not currently showing. */
+function markHazardIssues(issues) {
+  let $first = $();
+  issues.forEach(function (key) {
+    const info = HAZARD_ISSUE_INFO[key];
+    const $block = $(info.selector);
+    if (!$block.length) return; // not currently on the hazard screen
+    $block.addClass(info.errorClass);
+    if (!$block.find('.' + info.msgClass).length) {
+      $block.prepend(`<div class="${info.msgClass}" role="alert"><i class="fas fa-exclamation-circle"></i> ${info.inlineMsg}</div>`);
+    }
+    if (!$first.length) $first = $block;
+  });
+  return $first;
+}
+
+/**
+ * Puts the "this hazard isn't finished" message where the assessor is
+ * actually looking. #raError (used by every other gate in this wizard) sits
+ * after #raScreen in the document, underneath the hazard/task screens' fixed
+ * .ra-sticky-footer - on a long scoring form that is effectively invisible
+ * without scrolling past the very buttons that just blocked them, which is
+ * exactly the kind of dead end this wizard already had to fix once (see
+ * createConfirmFooter). So this still sets #raError (kept in sync for
+ * anything that reads it, tests included), but also drops a banner next to
+ * every offending field - always in view - and scrolls to the first one.
+ * `message` is either static (the Confirm-Hazard case) or built from
+ * user-entered text already run through escapeHtml (the Submit-time case,
+ * via describeIncomplete/hazardDescriptor/taskDescriptor above), so this
+ * never escapes anything itself.
+ */
+function showHazardIssues(issues, message) {
+  $('#raError').text(message);
+  const $first = markHazardIssues(issues);
+  if ($first.length) $first[0].scrollIntoView({ block: 'center' });
+}
+
+/**
+ * Same idea as showHazardIssues, for the one required field on the task
+ * screen. A task only ever has this one thing to be missing, so - unlike the
+ * hazard screen - there is nothing to combine into a list.
+ */
+function showTaskNameRequiredError(message) {
+  $('#raError').text(message);
+  const $block = $('.ra-taskname-block');
+  if (!$block.length) return; // not currently on the task screen
+  $block.addClass('ra-taskname-block--error');
+  if (!$block.find('.ra-taskname-error-msg').length) {
+    $block.prepend('<div class="ra-taskname-error-msg" role="alert"><i class="fas fa-exclamation-circle"></i> Enter a task name before you can continue.</div>');
+  }
+  $block[0].scrollIntoView({ block: 'center' });
+}
+
+/**
+ * The single, shared source of truth for "is this assessment actually
+ * finished", walked in the same order a normal trip through the wizard
+ * enforces it screen by screen: no tasks at all; then (per task, in list
+ * order) a blank name; then (per task, in list order) no hazards; then (per
+ * hazard, in task/hazard order - the same order the submit payload is built
+ * in) a blank hazard text, a blank person at risk, or no non-blank control.
+ * Returns null when nothing is wrong, or a discriminated-by-`type` object
+ * describing the first thing that is.
+ *
+ * Used by both the Review gate (tryGoToReview, reached from the list - there
+ * is nowhere further to jump to from there, so it only ever needs the
+ * message) and Submit's own last-checkpoint guard (submitRiskAssessment,
+ * which also has to jump the assessor to whichever screen holds the problem
+ * - a draft restored from before these rules existed is not "start again",
+ * it is exactly the one thing that needs fixing).
+ */
+function findIncomplete(tasks) {
+  if (!tasks.length) return { type: 'noTasks' };
+
+  for (let t = 0; t < tasks.length; t++) {
+    if (isBlank(tasks[t].taskName)) return { type: 'taskName', taskIndex: t, task: tasks[t] };
+  }
+  for (let t = 0; t < tasks.length; t++) {
+    if (tasks[t].hazards.length === 0) return { type: 'noHazards', taskIndex: t, task: tasks[t] };
+  }
   for (let t = 0; t < tasks.length; t++) {
     const task = tasks[t];
     for (let h = 0; h < task.hazards.length; h++) {
-      const hazard = task.hazards[h];
-      if (!hazardHasControl(hazard)) {
-        return { taskIndex: t, hazardIndex: h, task: task, hazard: hazard };
+      const issues = hazardIssueFragments(task.hazards[h]);
+      if (issues.length) {
+        return { type: 'hazard', taskIndex: t, hazardIndex: h, task: task, hazard: task.hazards[h], issues: issues };
       }
     }
   }
   return null;
 }
 
-/** "Task 2 ("Setup Activity")" / "Hazard 3" - ordinal always present (so the
- * hazard can be found even before it has a name), the quoted free text
- * appended only when there is one. Escaped: this lands in #raError via
- * .text(), which is already injection-safe on its own, but every user-typed
- * value gets routed through escapeHtml before it reaches the DOM regardless
- * of sink, same rule as everywhere else in this wizard. */
-function taskDescriptor(task, index) {
-  return task.taskName ? `Task ${index + 1} ("${escapeHtml(task.taskName)}")` : `Task ${index + 1}`;
-}
-
-function hazardDescriptor(hazard, index) {
-  return hazard.hazardText ? `Hazard ${index + 1} ("${escapeHtml(hazard.hazardText)}")` : `Hazard ${index + 1}`;
-}
-
-function describeMissingControlHazard(missing) {
-  return `${hazardDescriptor(missing.hazard, missing.hazardIndex)} in ${taskDescriptor(missing.task, missing.taskIndex)} `
-    + `has no control. Add at least one control before you can submit.`;
-}
-
 /**
- * Puts the "needs a control" message where the assessor is actually looking.
- * #raError (used by every other gate in this wizard) sits after #raScreen in
- * the document, underneath the hazard/task screens' fixed .ra-sticky-footer -
- * on a long scoring form that is effectively invisible without scrolling past
- * the very buttons that just blocked them, which is exactly the kind of dead
- * end this wizard already had to fix once (see createConfirmFooter). So this
- * still sets #raError (kept in sync for anything that reads it, tests
- * included), but also drops a second copy right inside the controls block
- * itself - always in view - and scrolls to it. Message text passed in is
- * either static (the Confirm-Hazard case, where the assessor is already
- * looking at the one hazard in question) or already escaped (the Submit-time
- * case, built by describeMissingControlHazard above), so this never escapes
- * anything itself - only .html()/.append() callers who build the string decide that.
+ * Confirm-Hazard's own gate: clears whatever was showing from a previous tap
+ * (the assessor may have just fixed one of several problems and be trying
+ * again on the same screen, which never gets a full render() to wipe the old
+ * banner for it), re-checks all three fields, and - if any are still
+ * missing - lights up every offending block at once rather than one at a
+ * time. Returns true only when the hazard is actually complete.
  */
-function showControlsRequiredError(message) {
-  $('#raError').text(message);
-  const $block = $('.ra-controls-block');
-  if (!$block.length) return; // not currently on the hazard screen
-  $block.addClass('ra-controls-block--error');
-  if (!$block.find('.ra-controls-error-msg').length) {
-    $block.prepend('<div class="ra-controls-error-msg" role="alert"><i class="fas fa-exclamation-circle"></i> Add at least one control before you can continue.</div>');
+function validateHazardScreen(hazard) {
+  clearHazardScreenErrors();
+  const issues = hazardIssueFragments(hazard);
+  if (!issues.length) return true;
+
+  showHazardIssues(issues, `This hazard still needs ${joinIssueLabels(issues)} before you can confirm it.`);
+  return false;
+}
+
+function describeIncomplete(missing) {
+  switch (missing.type) {
+    case 'noTasks':
+      return 'Add at least one task before you can submit.';
+    case 'taskName':
+      return `${taskDescriptor(missing.task, missing.taskIndex)} needs a name before you can submit.`;
+    case 'noHazards':
+      return `${taskDescriptor(missing.task, missing.taskIndex)} needs at least one hazard before you can submit.`;
+    case 'hazard':
+      return `${hazardDescriptor(missing.hazard, missing.hazardIndex)} in ${taskDescriptor(missing.task, missing.taskIndex)} `
+        + `has ${joinIssueSubmitPhrases(missing.issues)}. Fix this before you can submit.`;
+    default:
+      return '';
   }
-  $block[0].scrollIntoView({ block: 'center' });
 }
 
 // ── Add / remove ─────────────────────────────────────────────────────────
@@ -638,22 +775,35 @@ function renderReview() {
 
 /**
  * The Review-screen gate (tryGoToReview) already keeps a normal walk through
- * the wizard from ever reaching here with a control-less hazard - but a draft
- * saved before this rule existed (see restoreRaDraft) can restore straight
- * onto the review screen carrying one, bypassing that gate entirely. This is
- * the last checkpoint before the network call, so it re-checks the same rule
- * and, if it still fails, does not just complain in place (there is nothing
- * to fix on the review screen itself) - it jumps the assessor straight to the
- * offending hazard and highlights the controls block there, so "you're
- * missing a control" comes with "and here it is, go fix it" rather than
- * leaving them stuck on a screen with no control to add one from.
+ * the wizard from ever reaching here with anything incomplete - but a draft
+ * saved before some (or all) of these rules existed (see restoreRaDraft) can
+ * restore straight onto the review screen carrying a blank task name, a
+ * blank hazard text/person at risk, or no control, bypassing that gate
+ * entirely. This is the last checkpoint before the network call, so it
+ * re-checks the exact same rules (findIncomplete) and, if one still fails,
+ * does not just complain in place (there is nothing to fix on the review
+ * screen itself) - it jumps the assessor straight to the offending task or
+ * hazard and highlights the field(s) there, so "this isn't finished" comes
+ * with "and here it is, go fix it" rather than leaving them stuck on a
+ * screen with nothing to fix it from.
  */
 function submitRiskAssessment() {
-  const missing = findMissingControlHazard(riskAssessmentState.tasks);
+  const missing = findIncomplete(riskAssessmentState.tasks);
   if (missing) {
-    const message = describeMissingControlHazard(missing);
-    goToHazard(missing.taskIndex, missing.hazardIndex);
-    showControlsRequiredError(message);
+    const message = describeIncomplete(missing);
+    if (missing.type === 'hazard') {
+      goToHazard(missing.taskIndex, missing.hazardIndex);
+      showHazardIssues(missing.issues, message);
+    } else if (missing.type === 'taskName') {
+      goToTask(missing.taskIndex);
+      showTaskNameRequiredError(message);
+    } else if (missing.type === 'noHazards') {
+      goToTask(missing.taskIndex);
+      $('#raError').text(message);
+    } else {
+      goToList();
+      $('#raError').text(message);
+    }
     return;
   }
 
@@ -786,7 +936,18 @@ $(function () {
   // breadcrumb's #raBackToList, kept as a separate id because it is a
   // distinct, always-visible affordance (see .ra-sticky-footer), not a
   // second way to trigger the same handler by coincidence.
-  $('#riskAssessmentRoot').on('click', '#raConfirmTask', goToList);
+  // Unlike Confirm Hazard below, a task only has one required field, so
+  // there is nothing to combine into a list - it either has a name or it
+  // does not.
+  $('#riskAssessmentRoot').on('click', '#raConfirmTask', function () {
+    const task = currentTask();
+    if (task && isBlank(task.taskName)) {
+      showTaskNameRequiredError('Enter a task name before you can continue.');
+      return;
+    }
+    $('#raError').text('');
+    goToList();
+  });
   $('#riskAssessmentRoot').on('click', '#raRemoveTask', function () {
     confirmRemoveTask(riskAssessmentState.nav.taskIndex);
   });
@@ -799,17 +960,18 @@ $(function () {
   // returns to the task it belongs to - identical to the breadcrumb's
   // #raBackToTask above, same reasoning as #raConfirmTask. Unlike every other
   // Confirm in this wizard, this one is no longer pure navigation: a hazard
-  // with no non-blank control cannot be confirmed. The button itself stays
-  // enabled rather than being disabled with no explanation - a dead/silent
-  // button is the exact dead end createConfirmFooter's own comment already
-  // warns about - so a tap always does something: either it moves on, or it
-  // explains in place (showControlsRequiredError) exactly why it did not.
+  // with a blank hazard text, a blank person at risk, or no non-blank control
+  // cannot be confirmed. The button itself stays enabled rather than being
+  // disabled with no explanation - a dead/silent button is the exact dead end
+  // createConfirmFooter's own comment already warns about - so a tap always
+  // does something: either it moves on, or it explains in place exactly why
+  // it did not. All three fields live on this one screen at once, so a tap
+  // that finds several missing reports all of them together (showHazardIssues
+  // via validateHazardScreen) rather than sending the assessor back once per
+  // field.
   $('#riskAssessmentRoot').on('click', '#raConfirmHazard', function () {
     const hazard = currentHazard();
-    if (hazard && !hazardHasControl(hazard)) {
-      showControlsRequiredError('Add at least one control before you can confirm this hazard.');
-      return;
-    }
+    if (hazard && !validateHazardScreen(hazard)) return;
     $('#raError').text('');
     goToTask(riskAssessmentState.nav.taskIndex);
   });

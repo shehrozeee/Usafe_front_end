@@ -188,10 +188,12 @@ function createTaskScreen(task, index) {
         <span class="ra-crumb ra-crumb-current">${taskLabel}</span>
       </div>
       <div class="ra-screen-title"><i class="fas fa-tasks"></i> Task ${index + 1}</div>
-      <div class="form-group">
-        <label>Task name</label>
-        <input type="text" class="form-control ra-task-name-input" placeholder="What is being done?"
-          value="${escapeHtml(task.taskName)}">
+      <div class="ra-taskname-block">
+        <div class="form-group">
+          <label>Task name</label>
+          <input type="text" class="form-control ra-task-name-input" placeholder="What is being done?"
+            value="${escapeHtml(task.taskName)}">
+        </div>
       </div>
       <div class="ra-section-title"><i class="fas fa-exclamation-triangle"></i> Hazards</div>
       <div class="ra-hazard-list">${body}</div>
@@ -291,10 +293,12 @@ function createHazardScreen(task, hazard, taskIndex, hazardIndex, scale) {
       </div>
       <div class="ra-screen-title"><i class="fas fa-exclamation-triangle"></i> Hazard ${hazardIndex + 1}</div>
 
-      <div class="form-group">
-        <label>Hazard</label>
-        <textarea class="form-control ra-hazard-text" rows="2"
-          placeholder="What could go wrong?">${escapeHtml(hazard.hazardText)}</textarea>
+      <div class="ra-hazardtext-block">
+        <div class="form-group">
+          <label>Hazard</label>
+          <textarea class="form-control ra-hazard-text" rows="2"
+            placeholder="What could go wrong?">${escapeHtml(hazard.hazardText)}</textarea>
+        </div>
       </div>
 
       <div class="form-group">
@@ -305,9 +309,11 @@ function createHazardScreen(task, hazard, taskIndex, hazardIndex, scale) {
         </div>
       </div>
 
-      <div class="form-group">
-        <label>Person at risk</label>
-        <input type="text" class="form-control ra-person" value="${escapeHtml(hazard.personAtRisk)}">
+      <div class="ra-person-block">
+        <div class="form-group">
+          <label>Person at risk</label>
+          <input type="text" class="form-control ra-person" value="${escapeHtml(hazard.personAtRisk)}">
+        </div>
       </div>
 
       ${createRatingSection('Base Risk', 'before controls', 'base', hazard.baseSeverity, hazard.baseProbability, scale)}

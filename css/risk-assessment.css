@@ -373,7 +373,7 @@
 /* Controls are mandatory now (see the Confirm/Submit guards in
    Js/RiskAssessmentProcessor.js) - the empty state above stays in its normal
    calm .ra-empty-hint look until the assessor actually tries to move on
-   without one; only then does showControlsRequiredError add this modifier,
+   without one; only then does markHazardIssues add this modifier,
    reusing --ra-danger (the same token Remove/photo-remove already use)
    rather than a new colour, so a brand-new hazard is not shown as errored
    before anyone has touched it. */
@@ -386,7 +386,21 @@
     color: var(--ra-danger);
 }
 
-.ra-controls-error-msg {
+/* Hazard text, person at risk and task name are required too now, same
+   treatment as controls above: the field's own border goes red and a banner
+   explains why, right next to it, instead of disabling the Confirm button
+   (see the file banner comment on markHazardIssues / showTaskNameRequiredError
+   in Js/RiskAssessmentProcessor.js for why disabling was rejected). */
+.ra-hazardtext-block--error .form-control,
+.ra-person-block--error .form-control,
+.ra-taskname-block--error .form-control {
+    border-color: var(--ra-danger);
+}
+
+.ra-controls-error-msg,
+.ra-hazardtext-error-msg,
+.ra-person-error-msg,
+.ra-taskname-error-msg {
     display: flex;
     align-items: center;
     gap: 6px;
