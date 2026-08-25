@@ -1,6 +1,11 @@
 const Login = () => {
     $('#load').show();
-    let username = document.getElementById('username').value;
+    // Phone keyboards routinely append a space when they autocomplete an address,
+    // and the server looks the account up by exact email — Identity normalises case
+    // but not whitespace. Untrimmed, that invisible character comes back as
+    // "Invalid username or password", which nobody can diagnose from the screen.
+    // The password is deliberately left alone: a space can be part of it.
+    let username = document.getElementById('username').value.trim();
     let password = document.getElementById('password').value;
     let data = { username: username, password: password };
     sendRequest('api/account/login', 'POST', JSON.stringify(data), (data) => {
