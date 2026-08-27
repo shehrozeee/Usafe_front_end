@@ -5,13 +5,21 @@ const Login = () => {
     // but not whitespace. Untrimmed, that invisible character comes back as
     // "Invalid username or password", which nobody can diagnose from the screen.
     // The password is deliberately left alone: a space can be part of it.
-    let username = document.getElementById('username').value.trim();
+    //
+    // Lowercased for the same reason: an iPhone capitalises the first letter of the
+    // field, and the address it produced then travelled in the "email" header on every
+    // later request. Login accepted it, the API did not, and the app read the 401 as
+    // "Session expired" — a loop that cost ops@spoton.pk eleven minutes on 2026-08-27.
+    // The server no longer cares about the case, but nothing is served by storing it.
+    let username = document.getElementById('username').value.trim().toLowerCase();
     let password = document.getElementById('password').value;
     let data = { username: username, password: password };
     sendRequest('api/account/login', 'POST', JSON.stringify(data), (data) => {
         if (data) {
             if (data.status === 'success') {
-                localStorage.setItem("userName", data.userName);
+                // The server echoes back whatever was typed; store the address we
+                // normalised, not that echo, so the header stays lowercase from here on.
+                localStorage.setItem("userName", (data.userName || username).toLowerCase());
                 localStorage.setItem("siteId", data.siteId);
                 localStorage.setItem("siteName", data.siteName || "");
                 // Every agency this user may report for — drives the agency picker
